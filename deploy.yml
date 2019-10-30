@@ -17,14 +17,16 @@ jobs:
         mkdir ~/.ssh
         echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
         chmod 700 ~/.ssh/id_rsa
+        ssh-keyscan "github.com" > ~/.ssh/known_hosts
 
     - name: Checkout project
       uses: actions/checkout@master
 
     - name: Prepare Deployer
       run: |
-        curl -LO https://deployer.org/deployer.phar
-        chmod +x deployer.phar
+        git clone git@github.com:aonach/ghactions-deploy.git deployer
+        cd deployer
+        composer install
 
         servers=(${{ secrets.DEV_SERVER }} ${{ secrets.TEST_SERVER }} ${{ secrets.MASTER_SERVER }})
         serverAlias=(dev test master)
@@ -37,4 +39,6 @@ jobs:
         done
 
     - name: Deploy project
-      run: ./deployer.phar deploy ${GITHUB_REF##*/} --revision=$GITHUB_SHA -vvv
+      run: |
+        cd deployer
+        vendor/bin/dep deploy ${GITHUB_REF##*/} --revision=$GITHUB_SHA -vvv
