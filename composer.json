@@ -1,0 +1,7 @@
+{
+    "name": "aonach/ghactions-deploy",
+    "description": "Deploy to servers via Github Actions + Deployer",
+    "require": {
+        "deployer/deployer": "^6.5"
+    }
+}

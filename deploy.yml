@@ -1,0 +1,40 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - dev
+      - test
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Prepare SSH
+      env:
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      run: |
+        mkdir ~/.ssh
+        echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
+        chmod 700 ~/.ssh/id_rsa
+
+    - name: Checkout project
+      uses: actions/checkout@master
+
+    - name: Prepare Deployer
+      run: |
+        curl -LO https://deployer.org/deployer.phar
+        chmod +x deployer.phar
+
+        servers=(${{ secrets.DEV_SERVER }} ${{ secrets.TEST_SERVER }} ${{ secrets.MASTER_SERVER }})
+        serverAlias=(dev test master)
+        for index in ${!servers[@]}; do
+          echo "${serverAlias[$index]}:" >> hosts.yml
+          echo "  hostname: $(echo ${servers[$index]#*@} | cut -d: -f1)" >> hosts.yml
+          echo "  user: ${servers[$index]%@*}" >> hosts.yml
+          echo "  port: ${servers[$index]#*:}" >> hosts.yml
+          echo "  repository: git@github.com:$GITHUB_REPOSITORY.git" >> hosts.yml
+        done
+
+    - name: Deploy project
+      run: ./deployer.phar deploy ${GITHUB_REF##*/} --revision=$GITHUB_SHA -vvv
