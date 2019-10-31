@@ -1,10 +1,11 @@
 <?php
 namespace Deployer;
+use Symfony\Component\Console\Input\InputOption;
 
 require_once 'recipe/common.php';
 
 /**
- * Config of hosts created in Github Workflow "on fly"
+ * Config of hosts
  */
 inventory('hosts.yml');
 foreach (Deployer::get()->hosts as $host) {
@@ -14,8 +15,9 @@ foreach (Deployer::get()->hosts as $host) {
 /**
  * Configuration
  */
-set('deploy_path', '~/deploy');
-
+set('deploy_path',
+    '~/deploy'
+);
 set('shared_files', [
     'app/etc/env.php'
 ]);
@@ -23,7 +25,6 @@ set('shared_dirs', [
     'pub/media',
     'var/log'
 ]);
-
 set('bin/curl', function() {
     return locateBinaryPath('curl');
 });
@@ -122,3 +123,19 @@ task('deploy', [
     'cleanup',
     'success'
 ]);
+
+/**
+ * Set repository name from input
+ */
+option('repository',
+    null,
+    InputOption::VALUE_REQUIRED,
+    'Repository for pull'
+);
+
+task('set:repository' , function() {
+    if(input()->hasOption('repository')) {
+        set('repository', input()->getOption('repository'));
+    }
+})->setPrivate();
+before('deploy:update_code', 'set:repository');
