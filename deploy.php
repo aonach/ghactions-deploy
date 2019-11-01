@@ -15,9 +15,9 @@ foreach (Deployer::get()->hosts as $host) {
 /**
  * Configuration
  */
-set('deploy_path',
-    '~/deploy'
-);
+set('deploy_path', '~/deploy');
+set('repo_path', 'src');
+
 set('shared_files', [
     'app/etc/env.php'
 ]);
@@ -53,15 +53,6 @@ task('magento:deploy:assets', function() {
     run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy --force --strategy=compact en_US en_IE');
 });
 
-desc('Magento2 Gulp compile');
-task('magento:gulp:compile', function() {
-    run('
-    cd {{release_path}}
-    if [ -f gulpfile.js ]; then
-        gulp
-    fi');
-});
-
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function() {
     run('
@@ -80,16 +71,6 @@ desc('Magento2 cache flush');
 task('magento:cache:flush', function() {
     run('{{bin/php}} {{release_path}}/bin/magento cache:flush');
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
-});
-
-desc('Wordpress cache flush');
-task('wordpress:cache:flush', function() {
-    run('
-    cd {{release_path}}
-    if [ -f clear_wp_transients.sh ]; then
-        chmod +x clear_wp_transients.sh
-        ./clear_wp_transients.sh
-    fi');
 });
 
 desc('PHP Opcache flush');
@@ -113,10 +94,8 @@ task('deploy', [
     'magento:apply:patches',
     'magento:di:compile',
     'magento:deploy:assets',
-    'magento:gulp:compile',
     'magento:upgrade:db',
     'magento:cache:flush',
-    'wordpress:cache:flush',
     'php:opcache:flush',
     'deploy:symlink',
     'deploy:unlock',

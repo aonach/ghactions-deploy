@@ -22,7 +22,7 @@ task('set:repository' , function() {
 })->setPrivate();
 
 task('set:repo_path', function() {
-    if(has('repo_path')) {
+    if(get('repo_path')) {
         set('keep_path', '{{deploy_path}}/.dep/.keep');
         run('mkdir {{keep_path}}');
         run('
