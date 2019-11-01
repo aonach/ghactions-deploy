@@ -1,8 +1,8 @@
 <?php
 namespace Deployer;
-use Symfony\Component\Console\Input\InputOption;
 
 require_once 'recipe/common.php';
+require_once 'include/update_code.php';
 
 /**
  * Config of hosts
@@ -123,19 +123,3 @@ task('deploy', [
     'cleanup',
     'success'
 ]);
-
-/**
- * Set repository name from input
- */
-option('repository',
-    null,
-    InputOption::VALUE_REQUIRED,
-    'Repository for pull'
-);
-
-task('set:repository' , function() {
-    if(input()->hasOption('repository')) {
-        set('repository', input()->getOption('repository'));
-    }
-})->setPrivate();
-before('deploy:update_code', 'set:repository');
