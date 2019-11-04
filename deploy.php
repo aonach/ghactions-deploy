@@ -17,6 +17,7 @@ foreach (Deployer::get()->hosts as $host) {
  */
 set('deploy_path', '~/deploy');
 set('repo_path', 'src');
+set('asset_locales', 'en_US en_IE');
 
 set('shared_files', [
     'app/etc/env.php'
@@ -56,7 +57,10 @@ task('magento:deploy:assets', function() {
     $additionalOptions = version_compare($regs[0], '2.2', '>=') ?
         '--force --strategy=compact' : '--quiet';
 
-    run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy '.$additionalOptions.' en_US en_IE');
+    run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy '.
+        $additionalOptions.' '.
+        get('asset_locales')
+    );
 });
 
 desc('Magento2 upgrade database');
