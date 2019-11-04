@@ -63,12 +63,12 @@ desc('Magento2 upgrade database');
 task('magento:upgrade:db', function() {
     run('
     if ! {{release_path}}/bin/magento setup:db:status; then
-        if [ -d {{current_path}} ]; then
-            {{bin/php}} {{current_path}}/bin/magento maintenance:enable
+        if [ -d {{deploy_path}}/current ]; then
+            {{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable
         fi
         {{bin/php}} {{release_path}}/bin/magento setup:upgrade --keep-generated
-        if [ -d {{current_path}} ]; then
-            {{bin/php}} {{current_path}}/bin/magento maintenance:disable
+        if [ -d {{deploy_path}}/current ]; then
+            {{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable
         fi
     fi');
 });
