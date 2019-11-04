@@ -19,6 +19,9 @@ set('deploy_path', '~/deploy');
 set('repo_path', 'src');
 set('asset_locales', 'en_US en_IE');
 
+set('symlinks', [
+    '.' => 'pub/pub'
+]);
 set('shared_files', [
     'app/etc/env.php'
 ]);
@@ -61,6 +64,14 @@ task('magento:deploy:assets', function() {
         $additionalOptions.' '.
         get('asset_locales')
     );
+});
+
+desc('Magento2 create symlinks');
+task('magento:create:symlinks', function() {
+    cd('{{release_path}}');
+    foreach (get('symlinks') as $destination => $link) {
+        run('ln -s '.$destination.' '.$link);
+    }
 });
 
 desc('Magento2 upgrade database');
@@ -108,6 +119,7 @@ task('deploy', [
     'magento:di:compile',
     'magento:deploy:assets',
     'magento:upgrade:db',
+    'magento:create:symlinks',
     'magento:cache:flush',
     'php:opcache:flush',
     'deploy:symlink',
