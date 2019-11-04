@@ -35,3 +35,4 @@ task('set:repo_path', function() {
 
 before('deploy:update_code', 'set:repository');
 after('deploy:update_code', 'set:repo_path');
+// JS Wasn't clear on the purpose of this file / tasks but really just from my lack of understanding of the workflow.
