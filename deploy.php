@@ -1,13 +1,13 @@
 <?php
 namespace Deployer;
 
-require_once 'recipe/common.php';
-require_once 'include/update_code.php';
+require_once 'recipe/common.php'; //JS Was wondering where this came from as don't see it in the repo?
+require_once 'include/update_code.php'; //JS Funciton of this file?
 
 /**
  * Config of hosts
  */
-inventory('hosts.yml');
+inventory('hosts.yml'); // JS Why not store the hosts.yml in the .github/workflow folder or similar rather than the root? Would it get deployed? Although it wouldn't have password wouldn't want even that info directly accessible.
 foreach (Deployer::get()->hosts as $host) {
     $host->addSshOption('StrictHostKeyChecking', 'no');
 }
@@ -17,15 +17,15 @@ foreach (Deployer::get()->hosts as $host) {
  */
 set('deploy_path', '~/deploy');
 set('repo_path', 'src');
-set('asset_locales', 'en_US en_IE');
+set('asset_locales', 'en_US en_IE'); //JS What about multilingual sites? Maybe overridable.
 
 set('symlinks', [
-    '.' => 'pub/pub'
+    '.' => 'pub/pub' //JS Why do we do this?
 ]);
 set('shared_files', [
-    'app/etc/env.php'
+    'app/etc/env.php' 
 ]);
-set('shared_dirs', [
+set('shared_dirs', [ // JS Presume this can be extended / overridden for individual repos if needed?
     'pub/media',
     'var/log'
 ]);
@@ -57,7 +57,7 @@ task('magento:deploy:assets', function() {
     $m2version = run('{{bin/php}} {{release_path}}/bin/magento --version');
     preg_match('/((\d+\.?)+)/', $m2version, $regs);
 
-    $additionalOptions = version_compare($regs[0], '2.2', '>=') ?
+    $additionalOptions = version_compare($regs[0], '2.2', '>=') ? //JS Just add some comments explaining what this does so my brain doesn't have to work it out every time!
         '--force --strategy=compact' : '--quiet';
 
     run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy '.
@@ -94,12 +94,13 @@ task('magento:cache:flush', function() {
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
 
-desc('PHP Opcache flush');
+desc('PHP Opcache flush'); // JS This is for the Nexcess issue I think. Is this always necessary?
 task('php:opcache:flush', function() {
     $phpVersion = run('{{bin/php}} -r "echo phpversion();"');
     $cacheToolVersion = version_compare($phpVersion, '7.2', '>=') ? '' : '-3.2.1';
-
-    run('
+    
+    // JS Should we fork this to always have it availble in our repo at least?
+    run(' 
     {{bin/curl}} http://gordalina.github.io/cachetool/downloads/cachetool'.$cacheToolVersion.'.phar -o cachetool.phar
     chmod +x cachetool.phar
     for sock in /var/run/$(whoami)-remi-safe-php*.sock; do
