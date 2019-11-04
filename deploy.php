@@ -54,7 +54,7 @@ task('magento:deploy:assets', function() {
     preg_match('/((\d+\.?)+)/', $m2version, $regs);
 
     $additionalOptions = version_compare($regs[0], '2.2', '>=') ?
-        '--force --strategy=compact' : '';
+        '--force --strategy=compact' : '--quiet';
 
     run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy '.$additionalOptions.' en_US en_IE');
 });
@@ -81,8 +81,11 @@ task('magento:cache:flush', function() {
 
 desc('PHP Opcache flush');
 task('php:opcache:flush', function() {
+    $phpVersion = run('{{bin/php}} -r "echo phpversion();"');
+    $cacheToolVersion = version_compare($phpVersion, '7.2', '>=') ? '' : '-3.2.1';
+
     run('
-    {{bin/curl}} -sO http://gordalina.github.io/cachetool/downloads/cachetool.phar
+    {{bin/curl}} -sO http://gordalina.github.io/cachetool/downloads/cachetool'.$cacheToolVersion.'.phar
     chmod +x cachetool.phar
     for sock in /var/run/$(whoami)-remi-safe-php*.sock; do
         ./cachetool.phar opcache:reset --fcgi=$sock
