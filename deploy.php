@@ -77,7 +77,7 @@ task('magento:create:symlinks', function() {
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function() {
     run('
-    if ! {{release_path}}/bin/magento setup:db:status; then
+    if ! {{bin/php}} {{release_path}}/bin/magento setup:db:status; then
         if [ -d {{deploy_path}}/current ]; then
             {{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable
         fi
