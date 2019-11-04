@@ -50,7 +50,13 @@ task('magento:di:compile', function() {
 
 desc('Magento2 deploy assets');
 task('magento:deploy:assets', function() {
-    run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy --force --strategy=compact en_US en_IE');
+    $m2version = run('{{bin/php}} {{release_path}}/bin/magento --version');
+    preg_match('/((\d+\.?)+)/', $m2version, $regs);
+
+    $additionalOptions = version_compare($regs[0], '2.2', '>=') ?
+        '--force --strategy=compact' : '';
+
+    run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy '.$additionalOptions.' en_US en_IE');
 });
 
 desc('Magento2 upgrade database');
