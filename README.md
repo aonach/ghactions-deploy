@@ -25,3 +25,7 @@ You need to follow this simple steps to integrate in your project:
 https://deployer.org
 
 https://help.github.com/en/github/automating-your-workflow-with-github-actions
+
+// JS Composer add / update integration?
+// JS Sample of what deploy path will look like
+// JS Does it keep a copy of previous release? How many releases does it keep?
