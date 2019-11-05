@@ -59,6 +59,8 @@ task('magento:di:compile', function() {
 
 desc('Magento2 deploy assets');
 task('magento:deploy:assets', function() {
+    // Magento 2.1 has different arguments for setup:static-content:deploy, so
+    // we need to do the condition to take this
     $additionalOptions = version_compare(get('m2_version'), '2.2', '>=') ?
         '--force --strategy=compact' : '--quiet';
 
