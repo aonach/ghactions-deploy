@@ -31,6 +31,13 @@ set('shared_dirs', [
     'var/log'
 ]);
 
+set('m2_version', function() {
+    $m2version = run('{{bin/php}} {{release_path}}/bin/magento --version');
+    preg_match('/((\d+\.?)+)/', $m2version, $regs);
+
+    return $regs[0];
+});
+
 /**
  * Tasks
  */
@@ -52,10 +59,7 @@ task('magento:di:compile', function() {
 
 desc('Magento2 deploy assets');
 task('magento:deploy:assets', function() {
-    $m2version = run('{{bin/php}} {{release_path}}/bin/magento --version');
-    preg_match('/((\d+\.?)+)/', $m2version, $regs);
-
-    $additionalOptions = version_compare($regs[0], '2.2', '>=') ?
+    $additionalOptions = version_compare(get('m2_version'), '2.2', '>=') ?
         '--force --strategy=compact' : '--quiet';
 
     run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy '.
