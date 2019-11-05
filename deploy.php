@@ -2,6 +2,7 @@
 namespace Deployer;
 
 require_once 'recipe/common.php';
+require_once 'include/opcache.php';
 require_once 'include/update_code.php';
 
 /**
@@ -29,9 +30,6 @@ set('shared_dirs', [
     'pub/media',
     'var/log'
 ]);
-set('bin/curl', function() {
-    return locateBinaryPath('curl');
-});
 
 /**
  * Tasks
@@ -92,19 +90,6 @@ desc('Magento2 cache flush');
 task('magento:cache:flush', function() {
     run('{{bin/php}} {{release_path}}/bin/magento cache:flush');
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
-});
-
-desc('PHP Opcache flush');
-task('php:opcache:flush', function() {
-    $phpVersion = run('{{bin/php}} -r "echo phpversion();"');
-    $cacheToolVersion = version_compare($phpVersion, '7.2', '>=') ? '' : '-3.2.1';
-
-    run('
-    {{bin/curl}} http://gordalina.github.io/cachetool/downloads/cachetool'.$cacheToolVersion.'.phar -o cachetool.phar
-    chmod +x cachetool.phar
-    for sock in /var/run/$(whoami)-remi-safe-php*.sock; do
-        ./cachetool.phar opcache:reset --fcgi=$sock
-    done');
 });
 
 desc('Deploy your project');
