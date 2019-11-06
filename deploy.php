@@ -25,7 +25,9 @@ set('symlinks', [
     'pub/pub' => '.'
 ]);
 set('shared_files', [
-    'app/etc/env.php'
+    'app/etc/env.php',
+    'pub/robots.txt',
+    'pub/sitemap.xml'
 ]);
 set('shared_dirs', [
     'pub/media',
