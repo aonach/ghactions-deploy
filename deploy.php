@@ -3,6 +3,7 @@ namespace Deployer;
 
 require_once 'recipe/common.php';
 require_once 'include/opcache.php';
+require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
 
 /**
@@ -21,7 +22,7 @@ set('repo_path', 'src');
 set('asset_locales', 'en_US en_IE');
 
 set('symlinks', [
-    '.' => 'pub/pub'
+    'pub/pub' => '.'
 ]);
 set('shared_files', [
     'app/etc/env.php'
@@ -73,8 +74,8 @@ task('magento:deploy:assets', function() {
 desc('Magento2 create symlinks');
 task('magento:create:symlinks', function() {
     cd('{{release_path}}');
-    foreach (get('symlinks') as $destination => $link) {
-        run('ln -s '.$destination.' '.$link);
+    foreach (get('symlinks') as $key => $value) {
+        run('ln -s '.$value.' '.$key);
     }
 });
 
