@@ -31,7 +31,18 @@ set('shared_files', [
 ]);
 set('shared_dirs', [
     'pub/media',
-    'var/log'
+    'pub/sitemaps',
+    'var/backups',
+    'var/cache',
+    'var/composer_home',
+    'var/export',
+    'var/import',
+    'var/import_history',
+    'var/importexport',
+    'var/log',
+    'var/report',
+    'var/session',
+    'var/tmp'
 ]);
 
 set('m2_version', function() {
