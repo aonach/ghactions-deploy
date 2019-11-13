@@ -33,7 +33,6 @@ set('shared_dirs', [
     'pub/media',
     'pub/sitemaps',
     'var/backups',
-    'var/cache',
     'var/composer_home',
     'var/export',
     'var/import',
