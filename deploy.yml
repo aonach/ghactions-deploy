@@ -12,10 +12,11 @@ jobs:
     steps:
     - name: Prepare SSH
       env:
-        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        SECRETS: ${{ toJson(secrets) }}
       run: |
         mkdir ~/.ssh
-        echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
+        BRANCH=${GITHUB_REF##*/}
+        echo $SECRETS | jq -r '.DEPLOY_KEY_'${BRANCH^^} > ~/.ssh/id_rsa
         chmod 700 ~/.ssh/id_rsa
 
     - name: Checkout project
