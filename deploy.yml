@@ -16,6 +16,7 @@ jobs:
       run: |
         mkdir ~/.ssh
         BRANCH=${GITHUB_REF##*/}
+        BRANCH=${BRANCH//-/_}
         echo $SECRETS | jq -r '.DEPLOY_KEY_'${BRANCH^^} > ~/.ssh/id_rsa
         chmod 700 ~/.ssh/id_rsa
 
