@@ -24,7 +24,7 @@ jobs:
 
     - name: Prepare Deployer
       run: |
-        composer create-project aonach/ghactions-deploy deployer
+        composer create-project --no-interaction aonach/ghactions-deploy:dev-master deployer
 
     - name: Deploy project
       run: |
