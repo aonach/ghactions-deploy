@@ -21,7 +21,7 @@ task('php:opcache:flush', function() {
     run('
     {{bin/curl}} -s http://gordalina.github.io/cachetool/downloads/cachetool'.$cacheToolVersion.'.phar -o cachetool.phar
     chmod +x cachetool.phar
-    for sock in /var/run/$(whoami)-remi-safe-php*.sock; do
-        ./cachetool.phar opcache:reset --fcgi=$sock
+    for sock in {~/run/*.php-fpm.sock,/var/run/$(whoami)-remi-safe-php*.sock}; do
+        [ -S $sock ] && ./cachetool.phar opcache:reset --fcgi=$sock
     done');
 });
