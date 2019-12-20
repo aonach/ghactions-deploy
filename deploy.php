@@ -93,16 +93,20 @@ task('magento:create:symlinks', function() {
 
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function() {
-    run('
-    if ! {{bin/php}} {{release_path}}/bin/magento setup:db:status; then
+    $dbStatus = run('{{bin/php}} {{release_path}}/bin/magento setup:db:status');
+
+    // There's issue with exit code of setup:db:status in Magento 2.1,
+    // it's always the same regardless need we update the database or not
+    if (strpos($dbStatus, 'setup:upgrade') !== false) {
+        run('
         if [ -d {{deploy_path}}/current ]; then
             {{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable
         fi
         {{bin/php}} {{release_path}}/bin/magento setup:upgrade --keep-generated
         if [ -d {{deploy_path}}/current ]; then
             {{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable
-        fi
-    fi');
+        fi');
+    }
 });
 
 desc('Magento2 cache flush');
