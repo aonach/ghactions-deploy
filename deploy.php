@@ -93,7 +93,7 @@ task('magento:create:symlinks', function() {
 
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function() {
-    $dbStatus = run('{{bin/php}} {{release_path}}/bin/magento setup:db:status');
+    $dbStatus = run('{{bin/php}} {{release_path}}/bin/magento setup:db:status || true');
 
     // There's issue with exit code of setup:db:status in Magento 2.1,
     // it's always the same regardless need we update the database or not
