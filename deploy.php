@@ -19,6 +19,7 @@ foreach (Deployer::get()->hosts as $host) {
  */
 set('deploy_path', '~/deploy');
 set('repo_path', 'src');
+set('keep_releases', 3);
 set('asset_locales', 'en_US en_IE');
 
 set('symlinks', [
