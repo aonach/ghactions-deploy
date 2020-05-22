@@ -9,7 +9,10 @@ task('php:opcache:flush', function() {
 
     // Php socket to clear opcache can be located in different places
     // on different servers, just add your paths, if needed
-    run('[ ! -d ~/cachetool ] && composer create-project gordalina/cachetool ~/cachetool');
+    run('
+    if [ ! -d ~/cachetool ]; then
+        {{bin/composer}} create-project gordalina/cachetool ~/cachetool
+    fi');
 
     run('
     for sock in {~/run/*.php-fpm.sock,/var/run/$(whoami)-remi-safe-php*.sock}; do
