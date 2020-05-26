@@ -98,14 +98,15 @@ task('magento:upgrade:db', function() {
     // There's issue with exit code of setup:db:status in Magento 2.1,
     // it's always the same regardless need we update the database or not
     if (strpos($dbStatus, 'setup:upgrade') !== false) {
-        run('
-        if [ -d {{deploy_path}}/current ]; then
-            {{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable
-        fi
-        {{bin/php}} {{release_path}}/bin/magento setup:upgrade --keep-generated
-        if [ -d {{deploy_path}}/current ]; then
-            {{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable
-        fi');
+        $currentExists = test('[ -d {{deploy_path}}/current ]');
+
+        if ($currentExists) {
+            run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable');
+        }
+        run('{{bin/php}} {{release_path}}/bin/magento setup:upgrade --keep-generated');
+        if ($currentExists) {
+            run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
+        }
     }
 });
 
