@@ -37,7 +37,7 @@ class Informer
             $this->output->getVerbosity() >= OutputInterface::VERBOSITY_NORMAL &&
             !$task->isShallow()
         ) {
-            $this->output->writeln("➤ Executing task <info>{$task->getName()}</info>");
+            $this->output->writeln("##[group]<info>{$task->getName()}</info>");
             $this->output->setWasWritten(false);
         }
     }
@@ -70,6 +70,7 @@ class Informer
             } else {
                 $this->output->writeln("<info>✔</info> Ok [$taskTime]");
             }
+            $this->output->writeln("##[endgroup]");
         }
     }
 
