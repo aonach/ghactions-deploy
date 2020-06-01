@@ -15,12 +15,14 @@ option('repository',
 /**
  * Tasks
  */
+desc('Setting repository from output');
 task('set:repository' , function() {
     if(input()->hasOption('repository')) {
         set('repository', input()->getOption('repository'));
     }
 })->setPrivate();
 
+desc('Setting working path of repository');
 task('set:repo_path', function() {
     if(get('repo_path')) {
         set('keep_path', '{{deploy_path}}/.dep/.keep');
