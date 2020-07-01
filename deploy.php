@@ -88,7 +88,7 @@ desc('Magento2 create symlinks');
 task('magento:create:symlinks', function() {
     cd('{{release_path}}');
     foreach (get('symlinks') as $key => $value) {
-        run('ln -s '.$value.' '.$key);
+        run('ln -sf '.$value.' '.$key);
     }
 });
 
