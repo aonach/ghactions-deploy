@@ -61,7 +61,7 @@ task('magento:apply:patches', function() {
     run('
     for patch in patch/*.patch; do
         if [ -f $patch ]; then
-            {{bin/git}} apply -v $patch || echo "##[error]The patch $patch is not applicable";
+            {{bin/git}} apply -v $patch || printf "##[%s]The patch $patch is not applicable" "error";
         fi;
     done');
 });
