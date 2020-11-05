@@ -57,13 +57,13 @@ set('m2_version', function() {
  */
 desc('Magento2 apply patches');
 task('magento:apply:patches', function() {
+    cd('{{release_path}}');
     run('
-    cd {{release_path}}
-    if [ -d patch ]; then
-        for patch in patch/*.patch; do
-            {{bin/git}} apply -v $patch
-        done
-    fi');
+    for patch in patch/*.patch; do
+        if [ -f $patch ]; then
+            {{bin/git}} apply -v $patch || printf "##[%s]The patch $patch is not applicable" "error";
+        fi;
+    done');
 });
 
 desc('Magento2 dependency injection compile');
