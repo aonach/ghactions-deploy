@@ -1,4 +1,5 @@
 # Deploy via Github Actions and Deployer
+NOTE: branch only created for Healthplus project which no need to enable cache by default
 
 The repository contains <a href="https://deployer.org" target="_blank">Deployer</a> configuration for Magento2 and example of <a href="https://help.github.com/en/github/automating-your-workflow-with-github-actions" target="_blank">Github Actions</a> workflow. The workflow creates events on push into dev/test/master branches and initiate a deployment process to dev/test/master servers, correspondingly.
 
