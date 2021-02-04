@@ -113,7 +113,6 @@ task('magento:upgrade:db', function() {
 desc('Magento2 cache flush');
 task('magento:cache:flush', function() {
     run('{{bin/php}} {{release_path}}/bin/magento cache:flush');
-    run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
 
 desc('Deploy your project');
