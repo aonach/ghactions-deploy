@@ -113,6 +113,9 @@ task('magento:upgrade:db', function() {
 desc('Magento2 cache flush');
 task('magento:cache:flush', function() {
     run('{{bin/php}} {{release_path}}/bin/magento cache:flush');
+});
+desc('Magento2 cache disable some caches');
+task('magento:cache:disable', function() {
     run('{{bin/php}} {{release_path}}/bin/magento cache:disable layout');
     run('{{bin/php}} {{release_path}}/bin/magento cache:disable block_html');
     run('{{bin/php}} {{release_path}}/bin/magento cache:disable full_page');
@@ -133,6 +136,7 @@ task('deploy', [
     'magento:create:symlinks',
     'magento:cache:flush',
     'php:opcache:flush',
+    'magento:cache:disable',
     'deploy:symlink',
     'deploy:unlock',
     'cleanup',
