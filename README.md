@@ -12,13 +12,15 @@ You need to follow this simple steps to integrate in your project:
 
 4. Create required _DEPLOY_KEY_ secret in the settings on your repository, it will be used for connect to servers
 
-5. Prepare shared folder on your servers:
+5. Create optional _HTACCESS_ secret in the setting on your repository. 
+   
+6. Prepare shared folder on your servers:
 * copy _app/etc/env.php_ from current document root to _#deploy_path#/shared/app/etc/env.php_
 * copy all media files from _pub/media_ to _#deploy_path#/shared/pub/media_
 
-6. Be sure all deployment steps are going right on servers (take care about composer/ssh keys)
+7. Be sure all deployment steps are going right on servers (take care about composer/ssh keys)
 
-7. Push a commit to dev/test/master branch!
+8. Push a commit to dev/test/master branch!
 
 ## Related links:
 

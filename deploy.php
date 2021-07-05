@@ -5,6 +5,7 @@ require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
+require_once 'include/lock_env.php';
 
 /**
  * Config of hosts
@@ -132,6 +133,7 @@ task('deploy', [
     'magento:cache:flush',
     'php:opcache:flush',
     'deploy:symlink',
+    'deploy:lock_env',
     'deploy:unlock',
     'cleanup',
     'success'
