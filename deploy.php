@@ -123,7 +123,7 @@ task('deploy:lock_env', function() {
   //$currentExists = test('[ -d {{deploy_path}}/current ]');
   //&& test("[ -f {{release_path}}/$file ]"
   run ( 'echo "Lock env section in deploy.php"' );
-  run( 'echo {{lock_env}}' );
+  //run( 'echo {{lock_env}}' );
 
   $lock_env=get( 'lock_env' );
 
