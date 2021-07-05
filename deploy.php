@@ -5,7 +5,7 @@ require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
-require_once 'include/lock_env.php';
+//require_once 'include/lock_env.php';
 
 /**
  * Config of hosts
@@ -116,6 +116,28 @@ task('magento:cache:flush', function() {
     run('{{bin/php}} {{release_path}}/bin/magento cache:flush');
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
+
+
+desc('Lock environment with htaccess');
+task('deploy:lock_env', function() {
+  //$currentExists = test('[ -d {{deploy_path}}/current ]');
+  //&& test("[ -f {{release_path}}/$file ]"
+  run ( 'echo "Lock env section"' );
+  run( 'echo {{lock_env}}' );
+
+  $lock_env=get( 'lock_env' );
+
+  if (isset($lock_env)){
+    run ( 'echo "lock env is set"' );
+
+  }
+  else{
+    run ( 'echo "Lock env is NOT set"' );
+
+  }
+
+});
+
 
 desc('Deploy your project');
 task('deploy', [
