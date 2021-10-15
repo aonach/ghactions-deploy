@@ -5,6 +5,7 @@ require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
+require_once 'contrib/npm.php';
 
 /**
  * Config of hosts
@@ -21,6 +22,9 @@ set('deploy_path', '~/deploy');
 set('repo_path', 'src');
 set('keep_releases', 3);
 set('asset_locales', 'en_US en_IE');
+
+set('is_hyva_project', 0);
+set('hyva_path', 'app/design/frontend/Aonach/hyva');
 
 set('symlinks', [
     'pub/pub' => '.'
@@ -52,6 +56,7 @@ set('m2_version', function() {
     return $regs[0];
 });
 
+
 /**
  * Tasks
  */
@@ -69,6 +74,19 @@ task('magento:apply:patches', function() {
 desc('Magento2 dependency injection compile');
 task('magento:di:compile', function() {
     run('{{bin/php}} {{release_path}}/bin/magento setup:di:compile');
+});
+
+desc('Hyva styles compile (if applicable)');
+task('npm run build-prod', function() {
+
+    if((bool)get('is_hyva_project')) {
+        cd('{{release_path}}/{{hyva_path}}/web/tailwind');
+        run('{bin/npm} install');
+        run('{bin/npm} run build-prod');
+    } else {
+        write('Not applicable. This is not a Hyva project :(');
+    }
+
 });
 
 desc('Magento2 deploy assets');
