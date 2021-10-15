@@ -5,7 +5,6 @@ require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
-require_once 'contrib/npm.php';
 
 /**
  * Config of hosts
@@ -25,6 +24,9 @@ set('asset_locales', 'en_US en_IE');
 
 set('is_hyva_project', 0);
 set('hyva_path', 'app/design/frontend/Aonach/hyva');
+set('bin/npm', function () {
+    return locateBinaryPath('npm');
+});
 
 set('symlinks', [
     'pub/pub' => '.'
