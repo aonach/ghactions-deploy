@@ -146,6 +146,7 @@ task('deploy', [
     'deploy:shared',
     'magento:apply:patches',
     'magento:di:compile',
+    'npm run build-prod',
     'magento:deploy:assets',
     'magento:upgrade:db',
     'magento:create:symlinks',
