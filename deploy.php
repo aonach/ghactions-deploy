@@ -83,8 +83,8 @@ task('npm run build-prod', function() {
 
     if((bool)get('is_hyva_project')) {
         cd('{{release_path}}/{{hyva_path}}/web/tailwind');
-        run('{bin/npm} install');
-        run('{bin/npm} run build-prod');
+        run('{{bin/npm}} install');
+        run('{{bin/npm}} run build-prod');
     } else {
         write('Not applicable. This is not a Hyva project :(');
     }
