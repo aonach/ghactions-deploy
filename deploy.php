@@ -66,6 +66,7 @@ desc('Magento2 apply patches');
 task('magento:apply:patches', function() {
     cd('{{release_path}}');
     run('
+    exit 1
     for patch in patch/*.patch; do
         if [ -f $patch ]; then
             {{bin/git}} apply -v $patch || printf "##[%s]The patch $patch is not applicable" "error";
