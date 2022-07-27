@@ -139,8 +139,6 @@ task('magento:cache:flush', function() {
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
-    'deploy:release',
-    'deploy:update_code',
     'deploy:vendors',
     'deploy:shared',
     'magento:apply:patches',
