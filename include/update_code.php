@@ -20,7 +20,7 @@ task('set:repository' , function() {
     if(input()->hasOption('repository')) {
         set('repository', input()->getOption('repository'));
     }
-})->setPrivate();
+})->hidden();
 
 desc('Setting working path of repository');
 task('set:repo_path', function() {
@@ -33,7 +33,7 @@ task('set:repo_path', function() {
         mv {{keep_path}}/{{repo_path}}/* {{release_path}}');
         run('rm -rf {{keep_path}}');
     }
-})->setPrivate();
+})->hidden();
 
 before('deploy:update_code', 'set:repository');
 after('deploy:update_code', 'set:repo_path');

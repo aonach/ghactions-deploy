@@ -9,7 +9,7 @@ require_once 'include/update_code.php';
 /**
  * Config of hosts
  */
-inventory('hosts.yml');
+import('hosts.yml');
 foreach (Deployer::get()->hosts as $host) {
     $host->addSshOption('StrictHostKeyChecking', 'no');
 }
@@ -25,7 +25,7 @@ set('asset_locales', 'en_US en_IE');
 set('is_hyva_project', 0);
 set('hyva_path', 'app/design/frontend/Aonach/hyva');
 set('bin/npm', function () {
-    return locateBinaryPath('npm');
+    return which('npm');
 });
 
 set('symlinks', [
@@ -154,7 +154,7 @@ task('deploy', [
     'php:opcache:flush',
     'deploy:symlink',
     'deploy:unlock',
-    'cleanup',
-    'success'
+    'deploy:cleanup',
+    'deploy:success'
 ]);
 after('deploy:failed', 'deploy:unlock');
