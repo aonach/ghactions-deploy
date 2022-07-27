@@ -12,6 +12,8 @@ option('repository',
     'Repository for pull'
 );
 
+set('git_ssh_command', 'ssh');
+
 /**
  * Tasks
  */
