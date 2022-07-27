@@ -34,7 +34,8 @@ set('symlinks', [
 set('shared_files', [
     'app/etc/env.php',
     'pub/robots.txt',
-    'pub/sitemap.xml'
+    'pub/sitemap.xml',
+    'pub/.htaccess'
 ]);
 set('shared_dirs', [
     'pub/media',
