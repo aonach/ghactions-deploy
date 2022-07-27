@@ -86,7 +86,7 @@ task('npm run build-prod', function() {
         run('{{bin/npm}} install');
         run('{{bin/npm}} run build-prod');
     } else {
-        write('Not applicable. This is not a Hyva project :(');
+        writeln('Not applicable. This is not a Hyva project :(');
     }
 
 });
