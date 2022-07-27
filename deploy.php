@@ -11,7 +11,7 @@ require_once 'include/update_code.php';
  */
 import('hosts.yml');
 foreach (Deployer::get()->hosts as $host) {
-    //$host->addSshOption('StrictHostKeyChecking', 'no');
+    $host->setSshArguments(['-o StrictHostKeyChecking=no']);
 }
 
 /**
