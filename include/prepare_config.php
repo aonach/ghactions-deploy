@@ -12,5 +12,5 @@ task('config:prepare', function() {
 
         set($var, array_merge($globalValue, $hostValue));
     }
-})->setPrivate();
+})->hidden();
 before('deploy:prepare', 'config:prepare');

@@ -9,9 +9,9 @@ require_once 'include/update_code.php';
 /**
  * Config of hosts
  */
-inventory('hosts.yml');
+import('hosts.yml');
 foreach (Deployer::get()->hosts as $host) {
-    $host->addSshOption('StrictHostKeyChecking', 'no');
+    $host->setSshArguments(['-o StrictHostKeyChecking=no']);
 }
 
 /**
@@ -25,7 +25,7 @@ set('asset_locales', 'en_US en_IE');
 set('is_hyva_project', 0);
 set('hyva_path', 'app/design/frontend/Aonach/hyva');
 set('bin/npm', function () {
-    return locateBinaryPath('npm');
+    return which('npm');
 });
 
 set('symlinks', [
@@ -34,7 +34,8 @@ set('symlinks', [
 set('shared_files', [
     'app/etc/env.php',
     'pub/robots.txt',
-    'pub/sitemap.xml'
+    'pub/sitemap.xml',
+    'pub/.htaccess'
 ]);
 set('shared_dirs', [
     'pub/media',
@@ -86,7 +87,7 @@ task('npm run build-prod', function() {
         run('{{bin/npm}} install');
         run('{{bin/npm}} run build-prod');
     } else {
-        write('Not applicable. This is not a Hyva project :(');
+        writeln('Not applicable. This is not a Hyva project :(');
     }
 
 });
@@ -139,9 +140,6 @@ task('magento:cache:flush', function() {
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
-    'deploy:lock',
-    'deploy:release',
-    'deploy:update_code',
     'deploy:vendors',
     'deploy:shared',
     'magento:apply:patches',
@@ -154,7 +152,7 @@ task('deploy', [
     'php:opcache:flush',
     'deploy:symlink',
     'deploy:unlock',
-    'cleanup',
-    'success'
+    'deploy:cleanup',
+    'deploy:success'
 ]);
 after('deploy:failed', 'deploy:unlock');
