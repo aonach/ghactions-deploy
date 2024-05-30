@@ -6,6 +6,9 @@ require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
 
+const DB_UPDATE_NEEDED_EXIT_CODE = 2;
+const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
+
 /**
  * Config of hosts
  */
@@ -113,21 +116,35 @@ task('magento:create:symlinks', function() {
 
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function() {
-    $dbStatus = run('{{bin/php}} {{release_path}}/bin/magento setup:db:status || true');
+    // new method/version from https://github.com/deployphp/deployer/blob/master/recipe/magento2.php
+    // detect if setup:upgrade is needed
+    $dbUpgradeNeeded = false;
+    $currentExists = test('[ -d {{deploy_path}}/current ]');
 
-    // There's issue with exit code of setup:db:status in Magento 2.1,
-    // it's always the same regardless need we update the database or not
-    if (strpos($dbStatus, 'setup:upgrade') !== false) {
-        $currentExists = test('[ -d {{deploy_path}}/current ]');
-
-        if ($currentExists) {
-            run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable');
+    try {
+        run('{{bin/php}} {{bin/magento}} setup:db:status');
+    } catch (RunException $e) {
+        if ($e->getExitCode() == DB_UPDATE_NEEDED_EXIT_CODE) {
+            $dbUpgradeNeeded = true;
         }
-        run('{{bin/php}} {{release_path}}/bin/magento setup:upgrade --keep-generated');
-        if ($currentExists) {
-            run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
-        }
+        throw $e;
     }
+    // new section we didn't have before
+    try {
+        run('{{bin/php}} {{bin/magento}} module:config:status');
+    } catch (RunException $e) {
+        if ($e->getExitCode() == CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE) {
+            $dbUpgradeNeeded =  true;
+        }
+        throw $e;
+    }
+
+    if ($currentExists && $dbUpgradeNeeded) {
+        run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable');
+        run('{{bin/php}} {{release_path}}/bin/magento setup:upgrade --keep-generated');
+        run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
+    }
+
 });
 
 desc('Magento2 cache flush');
