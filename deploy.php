@@ -141,11 +141,12 @@ task('magento:upgrade:db', function() {
 
     if ($currentExists && $dbUpgradeNeeded) {
         run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable');
-        run('{{bin/php}} {{release_path}}/bin/magento setup:upgrade --keep-generated');
+        run('{{bin/php}} {{release_path}}/bin/magento setup:db-schema:upgrade --no-interaction');
+        run('{{bin/php}} {{release_path}}/bin/magento setup:db-data:upgrade --no-interaction');
         run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
     }
 
-});
+})->once();
 
 desc('Magento2 cache flush');
 task('magento:cache:flush', function() {
