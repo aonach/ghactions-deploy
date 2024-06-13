@@ -122,7 +122,7 @@ task('magento:upgrade:db', function() {
     $currentExists = test('[ -d {{deploy_path}}/current ]');
 
     try {
-        run('{{bin/php}} {{bin/magento}} setup:db:status');
+        run('{{bin/php}} {{release_path}}/bin/magento setup:db:status');
     } catch (RunException $e) {
         if ($e->getExitCode() == DB_UPDATE_NEEDED_EXIT_CODE) {
             $dbUpgradeNeeded = true;
@@ -131,7 +131,7 @@ task('magento:upgrade:db', function() {
     }
     // new section we didn't have before
     try {
-        run('{{bin/php}} {{bin/magento}} module:config:status');
+        run('{{bin/php}} {{release_path}}/bin/magento module:config:status');
     } catch (RunException $e) {
         if ($e->getExitCode() == CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE) {
             $dbUpgradeNeeded =  true;
