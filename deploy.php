@@ -56,6 +56,10 @@ set('shared_dirs', [
     'var/tmp'
 ]);
 
+set('magento_dir', '.');
+
+set('bin/magento', '{{release_or_current_path}}/{{magento_dir}}/bin/magento');
+
 set('m2_version', function () {
     $m2version = run('{{bin/php}} {{release_path}}/bin/magento --version');
     preg_match('/((\d+\.?)+)/', $m2version, $regs);
@@ -164,6 +168,7 @@ desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
     'deploy:vendors',
+    'magento:upgrade:db',
     'magento:apply:patches',
     'php:opcache:flush',
     'magento:di:compile',
