@@ -2,6 +2,12 @@
 
 namespace Deployer;
 
+use Deployer\Exception\ConfigurationException;
+use Deployer\Exception\GracefulShutdownException;
+use Deployer\Exception\RunException;
+use Deployer\Host\Host;
+
+
 require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
