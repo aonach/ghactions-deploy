@@ -174,7 +174,6 @@ desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
     'deploy:vendors',
-    'magento:upgrade:db',
     'magento:apply:patches',
     'php:opcache:flush',
     'magento:di:compile',
