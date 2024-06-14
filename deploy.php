@@ -1,10 +1,14 @@
 <?php
+
 namespace Deployer;
 
 require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
+
+const DB_UPDATE_NEEDED_EXIT_CODE = 2;
+const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
 
 /**
  * Config of hosts
@@ -52,7 +56,7 @@ set('shared_dirs', [
     'var/tmp'
 ]);
 
-set('m2_version', function() {
+set('m2_version', function () {
     $m2version = run('{{bin/php}} {{release_path}}/bin/magento --version');
     preg_match('/((\d+\.?)+)/', $m2version, $regs);
 
@@ -64,7 +68,7 @@ set('m2_version', function() {
  * Tasks
  */
 desc('Magento2 apply patches');
-task('magento:apply:patches', function() {
+task('magento:apply:patches', function () {
     cd('{{release_path}}');
     run('
     for patch in patch/*.patch; do
@@ -75,14 +79,14 @@ task('magento:apply:patches', function() {
 });
 
 desc('Magento2 dependency injection compile');
-task('magento:di:compile', function() {
+task('magento:di:compile', function () {
     run('{{bin/php}} {{release_path}}/bin/magento setup:di:compile');
 });
 
 desc('Hyva styles compile (if applicable)');
-task('npm run build-prod', function() {
+task('npm run build-prod', function () {
 
-    if((bool)get('is_hyva_project')) {
+    if ((bool)get('is_hyva_project')) {
         cd('{{release_path}}/{{hyva_path}}/web/tailwind');
         run('{{bin/npm}} install');
         run('{{bin/npm}} run build-prod');
@@ -93,46 +97,62 @@ task('npm run build-prod', function() {
 });
 
 desc('Magento2 deploy assets');
-task('magento:deploy:assets', function() {
+task('magento:deploy:assets', function () {
     // Magento 2.1 has different arguments for setup:static-content:deploy, so
     // we need to do the condition to take this
     $additionalOptions = version_compare(get('m2_version'), '2.2', '>=') ? '--force' : '--quiet';
 
-    run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy '.
-        $additionalOptions.' '.
+    run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy ' .
+        $additionalOptions . ' ' .
         get('asset_locales')
     );
 });
 
 desc('Magento2 create symlinks');
-task('magento:create:symlinks', function() {
+task('magento:create:symlinks', function () {
     cd('{{release_path}}');
     foreach (get('symlinks') as $key => $value) {
-        run('ln -sf '.$value.' '.$key);
+        run('ln -sf ' . $value . ' ' . $key);
     }
 });
 
 desc('Magento2 upgrade database');
-task('magento:upgrade:db', function() {
-    $dbStatus = run('{{bin/php}} {{release_path}}/bin/magento setup:db:status || true');
+task('magento:upgrade:db', function () {
+    // new method/version from https://github.com/deployphp/deployer/blob/master/recipe/magento2.php
+    // detect if setup:upgrade is needed
+    $dbUpgradeNeeded = false;
+    $currentExists = test('[ -d {{deploy_path}}/current ]');
 
-    // There's issue with exit code of setup:db:status in Magento 2.1,
-    // it's always the same regardless need we update the database or not
-    if (strpos($dbStatus, 'setup:upgrade') !== false) {
-        $currentExists = test('[ -d {{deploy_path}}/current ]');
-
-        if ($currentExists) {
-            run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable');
+    try {
+        run('{{bin/php}} {{release_path}}/bin/magento setup:db:status');
+    } catch (RunException $e) {
+        if ($e->getExitCode() == DB_UPDATE_NEEDED_EXIT_CODE) {
+            $dbUpgradeNeeded = true;
         }
-        run('{{bin/php}} {{release_path}}/bin/magento setup:upgrade --keep-generated');
-        if ($currentExists) {
-            run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
-        }
+        throw $e;
     }
-});
+
+    // new section we didn't have before
+    try {
+        run('{{bin/php}} {{release_path}}/bin/magento module:config:status');
+    } catch (RunException $e) {
+        if ($e->getExitCode() == CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE) {
+            $dbUpgradeNeeded = true;
+        }
+        throw $e;
+    }
+
+    if ($currentExists && $dbUpgradeNeeded) {
+        run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable');
+        run('{{bin/php}} {{release_path}}/bin/magento setup:db-schema:upgrade --no-interaction');
+        run('{{bin/php}} {{release_path}}/bin/magento setup:db-data:upgrade --no-interaction');
+        run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
+    }
+})->once();
+
 
 desc('Magento2 cache flush');
-task('magento:cache:flush', function() {
+task('magento:cache:flush', function () {
     run('{{bin/php}} {{release_path}}/bin/magento cache:flush');
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
