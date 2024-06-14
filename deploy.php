@@ -116,40 +116,43 @@ task('magento:create:symlinks', function () {
     }
 });
 
+set('database_upgrade_needed', function () {
+    // detect if setup:upgrade is needed
+    try {
+        run('{{bin/php}} {{bin/magento}} setup:db:status');
+    } catch (RunException $e) {
+        if ($e->getExitCode() == DB_UPDATE_NEEDED_EXIT_CODE) {
+            return true;
+        }
+
+        throw $e;
+    }
+    try {
+        run('{{bin/php}} {{bin/magento}} module:config:status');
+    } catch (RunException $e) {
+        if ($e->getExitCode() == CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE) {
+            return true;
+        }
+
+        throw $e;
+    }
+
+    return false;
+});
+
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function () {
     // new method/version from https://github.com/deployphp/deployer/blob/master/recipe/magento2.php
     // detect if setup:upgrade is needed
-    $dbUpgradeNeeded = false;
     $currentExists = test('[ -d {{deploy_path}}/current ]');
 
-    try {
-        run('{{bin/php}} {{release_path}}/bin/magento setup:db:status');
-    } catch (RunException $e) {
-        if ($e->getExitCode() == DB_UPDATE_NEEDED_EXIT_CODE) {
-            $dbUpgradeNeeded = true;
-        }
-        throw $e;
-    }
-
-    // new section we didn't have before
-    try {
-        run('{{bin/php}} {{release_path}}/bin/magento module:config:status');
-    } catch (RunException $e) {
-        if ($e->getExitCode() == CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE) {
-            $dbUpgradeNeeded = true;
-        }
-        throw $e;
-    }
-
-    if ($currentExists && $dbUpgradeNeeded) {
+    if ($currentExists && get('database_upgrade_needed')) {
         run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable');
         run('{{bin/php}} {{release_path}}/bin/magento setup:db-schema:upgrade --no-interaction');
         run('{{bin/php}} {{release_path}}/bin/magento setup:db-data:upgrade --no-interaction');
         run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
     }
 })->once();
-
 
 desc('Magento2 cache flush');
 task('magento:cache:flush', function () {
