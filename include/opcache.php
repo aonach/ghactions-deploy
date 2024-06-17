@@ -21,7 +21,9 @@ task('php:opcache:flush', function() {
     run('
     for sock in {{{php_sock_path}}}; do
         if [ -S $sock ]; then
+            ~/cachetool/bin/cachetool stat:realpath_size --fcgi=$sock && \
             ~/cachetool/bin/cachetool opcache:reset --fcgi=$sock && \
+            ~/cachetool/bin/cachetool stat:realpath_size --fcgi=$sock && \
             echo "Opcache was cleared (php sock is $sock)"
         fi;
     done');
