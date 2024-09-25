@@ -83,7 +83,7 @@ task('magento:apply:patches', function () {
     run('
     for patch in patch/*.patch; do
         if [ -f $patch ]; then
-            {{bin/git}} apply -v $patch || printf "##[%s]The patch $patch is not applicable" "error";
+            {{bin/git}} apply -v $patch || printf "##[%s]The patch $patch is not applicable" "error" && exit 1;
         fi;
     done');
 });
