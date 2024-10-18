@@ -19,7 +19,7 @@ task('php:opcache:flush', function() {
     }
 
     // Randomly go and try and update the cachetool if todays date is divisible by 3
-    run('(( $(date +%d) % 3 == 0 )) && {{bin/composer}} update -d=~/cachetool || echo "Not updating cachetool" ');
+    run('(( $(date +%d) % 3 == 0 )) && {{bin/composer}} update -d ~/cachetool || echo "Not updating cachetool" ');
 
     run('
     for sock in {{{php_sock_path}}}; do
