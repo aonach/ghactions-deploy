@@ -28,6 +28,10 @@ task('php:opcache:flush', function() {
             ~/cachetool/bin/cachetool opcache:reset --fcgi=$sock && \
             ~/cachetool/bin/cachetool stat:realpath_size --fcgi=$sock && \
             echo "Opcache was cleared (php sock is $sock)"
+        else
+            ~/cachetool/bin/cachetool opcache:status
+            ~/cachetool/bin/cachetool opcache:reset
+            ~/cachetool/bin/cachetool opcache:status
         fi;
     done');
 });
