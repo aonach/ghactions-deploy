@@ -176,7 +176,6 @@ task('deploy', [
     'deploy:vendors',
     'deploy:shared',
     'magento:apply:patches',
-    'php:opcache:flush',
     'magento:di:compile',
     'npm run build-prod',
     'magento:deploy:assets',
