@@ -184,7 +184,6 @@ task('deploy', [
     'magento:cache:flush',
     'deploy:symlink',
     'deploy:unlock',
-    'php:opcache:flush',
     'deploy:cleanup',
     'deploy:success'
 ]);
