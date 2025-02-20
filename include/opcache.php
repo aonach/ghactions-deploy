@@ -4,8 +4,8 @@ namespace Deployer;
 /**
  * Configuration
  */
-//set('php_sock_path', '~/run/*.php-fpm.sock,/var/run/$(whoami)-remi-safe-php*.sock');
-set('php_sock_path', '/var/run/$(whoami)-remi-safe-php8*.sock');
+set('php_sock_path', '~/run/*.php-fpm.sock,/var/run/$(whoami)-remi-safe-php*.sock');
+//set('php_sock_path', '/var/run/$(whoami)-remi-safe-php8*.sock');
 
 /**
  * Tasks
