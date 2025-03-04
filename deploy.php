@@ -183,6 +183,7 @@ task('deploy', [
     'magento:create:symlinks',
     'magento:cache:flush',
     'deploy:symlink',
+    'php:opcache:flush',
     'deploy:unlock',
     'deploy:cleanup',
     'deploy:success'
