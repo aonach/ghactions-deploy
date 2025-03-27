@@ -15,39 +15,56 @@ require_once 'include/update_code.php';
 
 // Simple task timing implementation - no separate file needed
 set('task_timers', []);
+set('task_start_times', []);
 
-// Set up timer tasks
-desc('Log task start time');
-task('timer:start', function () {
-    $taskName = Deployer::get()->getWorker()->getTask()->getName();
-    if ($taskName !== 'timer:start' && $taskName !== 'timer:end') {
-        writeln("##[group]⏱️ Starting task: {$taskName}");
-        set('current_task_start_time', microtime(true));
-    }
-})->hidden();
+// Create task-specific timer tasks for each deployment task
+$deployTasks = [
+    'deploy:prepare', 'deploy:vendors', 'deploy:shared',
+    'magento:apply:patches', 'magento:di:compile', 'npm run build-prod',
+    'magento:deploy:assets', 'magento:upgrade:db', 'magento:create:symlinks',
+    'magento:cache:flush', 'deploy:symlink', 'php:opcache:flush',
+    'deploy:unlock', 'deploy:cleanup', 'deploy:success'
+];
 
-desc('Log task end time');
-task('timer:end', function () {
-    $taskName = Deployer::get()->getWorker()->getTask()->getName();
-    if ($taskName !== 'timer:start' && $taskName !== 'timer:end') {
-        $startTime = get('current_task_start_time', 0);
-        $endTime = microtime(true);
-        $duration = $endTime - $startTime;
+foreach ($deployTasks as $taskName) {
+    // Make start task for this specific task
+    desc("Timer start for $taskName");
+    task("timer:start:$taskName", function() use ($taskName) {
+        writeln("##[group]⏱️ Starting task: $taskName");
+        $taskStartTimes = get('task_start_times', []);
+        $taskStartTimes[$taskName] = microtime(true);
+        set('task_start_times', $taskStartTimes);
+    })->hidden();
+    
+    // Make end task for this specific task
+    desc("Timer end for $taskName");
+    task("timer:end:$taskName", function() use ($taskName) {
+        $taskStartTimes = get('task_start_times', []);
         
-        // Format time nicely
-        $seconds = floor($duration);
-        $milliseconds = round(($duration - $seconds) * 1000);
-        $formattedTime = ($seconds > 0 ? "{$seconds}s " : "") . "{$milliseconds}ms";
-        
-        writeln("⏱️ Task '{$taskName}' completed in {$formattedTime}");
-        writeln("##[endgroup]");
-        
-        // Store for summary
-        $timers = get('task_timers', []);
-        $timers[$taskName] = $duration;
-        set('task_timers', $timers);
-    }
-})->hidden();
+        if (isset($taskStartTimes[$taskName])) {
+            $startTime = $taskStartTimes[$taskName];
+            $endTime = microtime(true);
+            $duration = $endTime - $startTime;
+            
+            // Format time nicely
+            $seconds = floor($duration);
+            $milliseconds = round(($duration - $seconds) * 1000);
+            $formattedTime = ($seconds > 0 ? "{$seconds}s " : "") . "{$milliseconds}ms";
+            
+            writeln("⏱️ Task '$taskName' completed in $formattedTime");
+            writeln("##[endgroup]");
+            
+            // Store for summary
+            $timers = get('task_timers', []);
+            $timers[$taskName] = $duration;
+            set('task_timers', $timers);
+        }
+    })->hidden();
+    
+    // Hook up the timer tasks
+    before($taskName, "timer:start:$taskName");
+    after($taskName, "timer:end:$taskName");
+}
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
@@ -266,18 +283,6 @@ task('deploy', [
     'deploy:timing:summary'
 ]);
 
-// Add timer hooks to all tasks
-$deployTasks = [
-    'deploy:prepare', 'deploy:vendors', 'deploy:shared',
-    'magento:apply:patches', 'magento:di:compile', 'npm run build-prod',
-    'magento:deploy:assets', 'magento:upgrade:db', 'magento:create:symlinks',
-    'magento:cache:flush', 'deploy:symlink', 'php:opcache:flush',
-    'deploy:unlock', 'deploy:cleanup', 'deploy:success'
-];
-
-foreach ($deployTasks as $taskName) {
-    before($taskName, 'timer:start');
-    after($taskName, 'timer:end');
-}
+// Timer hooks are already added when the tasks are defined above
 
 after('deploy:failed', 'deploy:unlock');
