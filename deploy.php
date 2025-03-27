@@ -18,19 +18,62 @@ require_once 'include/update_code.php';
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
 
-// Create a simple task to explain how to view task timing in GitHub Actions
-desc('Show task timing information');
-task('deploy:timing:info', function() {
-    writeln('');
-    writeln('📊 Task Timing Information');
-    writeln('');
-    writeln('To view the timing for each deployment task in GitHub Actions:');
-    writeln('1. View the workflow run in GitHub Actions');
-    writeln('2. Expand the "Deploy project" step');
-    writeln('3. The time for each task is shown on the right side of the logs');
-    writeln('4. The total deployment time is shown at the top of the log');
-    writeln('');
-});
+// Create a function to wrap individual tasks with timing
+function add_task_timing($task_name) {
+    // Create the timed task
+    $original_task = Deployer::get()->tasks[$task_name];
+    $original_desc = $original_task->getDescription();
+    $timed_task_name = "timed:$task_name";
+    
+    // Create a new task that runs the original but with timing
+    desc($original_desc ? $original_desc : "Running $task_name with timing");
+    task($timed_task_name, function() use ($task_name) {
+        $start_time = microtime(true);
+        writeln("⏱️ Starting task: $task_name");
+        
+        // Run the original task
+        $result = run("cd {{release_path}} && {{bin/php}} {{release_path}}/vendor/bin/dep --file={{deploy_path}}/current/deploy.php $task_name");
+        
+        // Calculate and display timing
+        $end_time = microtime(true);
+        $duration = $end_time - $start_time;
+        $seconds = floor($duration);
+        $milliseconds = round(($duration - $seconds) * 1000);
+        $formatted_time = ($seconds > 0 ? "{$seconds}s " : "") . "{$milliseconds}ms";
+        
+        writeln("⏱️ Task '$task_name' completed in $formatted_time");
+        
+        return $result;
+    });
+    
+    return $timed_task_name;
+}
+
+// List of tasks to measure
+$tasks_to_time = [
+    'deploy:prepare',
+    'deploy:vendors',
+    'deploy:shared',
+    'magento:apply:patches',
+    'magento:di:compile',
+    'npm run build-prod',
+    'magento:deploy:assets',
+    'magento:upgrade:db',
+    'magento:create:symlinks',
+    'magento:cache:flush',
+    'deploy:symlink',
+    'php:opcache:flush'
+];
+
+// Create timed versions of tasks
+$timed_tasks = [];
+foreach ($tasks_to_time as $task_name) {
+    if (isset(Deployer::get()->tasks[$task_name])) {
+        $timed_tasks[] = add_task_timing($task_name);
+    } else {
+        $timed_tasks[] = $task_name; // Use original if not found
+    }
+}
 
 /**
  * Config of hosts
@@ -188,25 +231,60 @@ task('magento:cache:flush', function () {
 
 // No event hooks - they don't work in this version of Deployer
 
+// Simpler approach: use a separate task for timing
+desc('Show task timing info');
+task('deploy:timer:start', function($task_name) {
+    writeln("");
+    writeln("⏱️ Starting task: $task_name");
+    set('task_start_time', microtime(true));
+});
+
+desc('Show task timing result');
+task('deploy:timer:end', function($task_name) {
+    if (get('task_start_time')) {
+        $start = get('task_start_time');
+        $end = microtime(true);
+        $duration = $end - $start;
+        
+        // Format time nicely
+        $seconds = floor($duration);
+        $milliseconds = round(($duration - $seconds) * 1000);
+        $formattedTime = ($seconds > 0 ? "{$seconds}s " : "") . "{$milliseconds}ms";
+        
+        writeln("⏱️ Task '$task_name' completed in $formattedTime");
+        writeln("");
+    }
+});
+
+// Function to create a timed version of a task
+function addTimingToTask($taskName) {
+    // Add the task sequence
+    task("timed:$taskName", [
+        "deploy:timer:start $taskName",
+        $taskName,
+        "deploy:timer:end $taskName"
+    ])->desc("Timed version of $taskName");
+    
+    return "timed:$taskName";
+}
+
+// Create timed versions of our main tasks
+$timedTasks = [];
+foreach ($tasks_to_time as $taskName) {
+    $timedTasks[] = addTimingToTask($taskName);
+}
+
+// Add the remaining tasks that don't need timing
+$deployTasks = array_merge(
+    $timedTasks,
+    [
+        'deploy:unlock',
+        'deploy:cleanup',
+        'deploy:success'
+    ]
+);
+
 desc('Deploy your project');
-task('deploy', [
-    'deploy:timing:info',
-    'deploy:prepare',
-    'deploy:vendors',
-    'deploy:shared',
-    'magento:apply:patches',
-    'magento:di:compile',
-    'npm run build-prod',
-    'magento:deploy:assets',
-    'magento:upgrade:db',
-    'magento:create:symlinks',
-    'magento:cache:flush',
-    'deploy:symlink',
-    'php:opcache:flush',
-    'deploy:unlock',
-    'deploy:cleanup',
-    'deploy:success',
-    'deploy:timing:info'
-]);
+task('deploy', $deployTasks);
 
 after('deploy:failed', 'deploy:unlock');
