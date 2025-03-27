@@ -12,7 +12,42 @@ require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
-require_once 'include/task_timer.php';
+
+// Simple task timing implementation - no separate file needed
+set('task_timers', []);
+
+// Set up timer tasks
+desc('Log task start time');
+task('timer:start', function () {
+    $taskName = Deployer::get()->getWorker()->getTask()->getName();
+    if ($taskName !== 'timer:start' && $taskName !== 'timer:end') {
+        writeln("##[group]⏱️ Starting task: {$taskName}");
+        set('current_task_start_time', microtime(true));
+    }
+})->hidden();
+
+desc('Log task end time');
+task('timer:end', function () {
+    $taskName = Deployer::get()->getWorker()->getTask()->getName();
+    if ($taskName !== 'timer:start' && $taskName !== 'timer:end') {
+        $startTime = get('current_task_start_time', 0);
+        $endTime = microtime(true);
+        $duration = $endTime - $startTime;
+        
+        // Format time nicely
+        $seconds = floor($duration);
+        $milliseconds = round(($duration - $seconds) * 1000);
+        $formattedTime = ($seconds > 0 ? "{$seconds}s " : "") . "{$milliseconds}ms";
+        
+        writeln("⏱️ Task '{$taskName}' completed in {$formattedTime}");
+        writeln("##[endgroup]");
+        
+        // Store for summary
+        $timers = get('task_timers', []);
+        $timers[$taskName] = $duration;
+        set('task_timers', $timers);
+    }
+})->hidden();
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
@@ -171,6 +206,46 @@ task('magento:cache:flush', function () {
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
 
+// Create a task for the timing summary
+desc('Show task timing summary');
+task('deploy:timing:summary', function() {
+    writeln("");
+    writeln("##[group]⏱️ Task Timing Summary (longest first)");
+    
+    $timers = get('task_timers', []);
+    
+    // Sort by duration (longest first)
+    arsort($timers);
+    
+    // Display the sorted task timings
+    foreach ($timers as $taskName => $duration) {
+        $seconds = floor($duration);
+        $milliseconds = round(($duration - $seconds) * 1000);
+        $formattedTime = ($seconds > 0 ? "{$seconds}s " : "") . "{$milliseconds}ms";
+        writeln("⏱️ {$taskName}: {$formattedTime}");
+    }
+    
+    // Calculate and show total time
+    $totalTime = array_sum($timers);
+    $totalSeconds = floor($totalTime);
+    $totalMinutes = floor($totalSeconds / 60);
+    $remainingSeconds = $totalSeconds % 60;
+    $totalMilliseconds = round(($totalTime - $totalSeconds) * 1000);
+    
+    $formattedTotal = "";
+    if ($totalMinutes > 0) {
+        $formattedTotal .= "{$totalMinutes}m ";
+    }
+    if ($remainingSeconds > 0 || $totalMinutes > 0) {
+        $formattedTotal .= "{$remainingSeconds}s ";
+    }
+    $formattedTotal .= "{$totalMilliseconds}ms";
+    
+    writeln("");
+    writeln("⏱️ Total measured task time: {$formattedTotal}");
+    writeln("##[endgroup]");
+})->once();
+
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
@@ -187,6 +262,22 @@ task('deploy', [
     'php:opcache:flush',
     'deploy:unlock',
     'deploy:cleanup',
-    'deploy:success'
+    'deploy:success',
+    'deploy:timing:summary'
 ]);
+
+// Add timer hooks to all tasks
+$deployTasks = [
+    'deploy:prepare', 'deploy:vendors', 'deploy:shared',
+    'magento:apply:patches', 'magento:di:compile', 'npm run build-prod',
+    'magento:deploy:assets', 'magento:upgrade:db', 'magento:create:symlinks',
+    'magento:cache:flush', 'deploy:symlink', 'php:opcache:flush',
+    'deploy:unlock', 'deploy:cleanup', 'deploy:success'
+];
+
+foreach ($deployTasks as $taskName) {
+    before($taskName, 'timer:start');
+    after($taskName, 'timer:end');
+}
+
 after('deploy:failed', 'deploy:unlock');
