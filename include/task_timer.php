@@ -8,12 +8,13 @@ namespace Deployer;
 // Store task start times
 set('task_timers', []);
 
-// Before each task starts, record its start time
-on('task:before', function($task) {
-    $taskName = $task->getName();
+// Track the start and end of each task using hooks
+desc('Track task start');
+task('task:timer:before', function() {
+    $taskName = Deployer::get()->getWorker()->getTask()->getName();
     
-    // Skip internal/hidden tasks
-    if ($task->isHidden() || $task->isPrivate()) {
+    // Skip tracking specific tasks to avoid noise
+    if (in_array($taskName, ['task:timer:before', 'task:timer:after', 'deploy:timing:summary'])) {
         return;
     }
     
@@ -24,14 +25,14 @@ on('task:before', function($task) {
     
     // Output GitHub Actions compatible group start
     writeln("##[group]⏱️ Starting task: {$taskName}");
-});
+})->hidden();
 
-// After each task completes, calculate and output the time taken
-on('task:success', function($task) {
-    $taskName = $task->getName();
+desc('Track task end');
+task('task:timer:after', function() {
+    $taskName = Deployer::get()->getWorker()->getTask()->getName();
     
-    // Skip internal/hidden tasks
-    if ($task->isHidden() || $task->isPrivate()) {
+    // Skip tracking specific tasks to avoid noise
+    if (in_array($taskName, ['task:timer:before', 'task:timer:after', 'deploy:timing:summary'])) {
         return;
     }
     
@@ -55,7 +56,7 @@ on('task:success', function($task) {
         $taskTimers[$taskName]['duration'] = $duration;
         set('task_timers', $taskTimers);
     }
-});
+})->hidden();
 
 // Add task to display timing summary at the end
 desc('Display task timing summary');
@@ -104,6 +105,18 @@ task('deploy:timing:summary', function() {
     writeln("⏱️ Total measured task time: {$formattedTotal}");
     writeln("##[endgroup]");
 })->once();
+
+// Add hooks to execute timing tasks before and after each task
+foreach (Deployer::get()->tasks as $taskName => $task) {
+    // Skip our own timing tasks to avoid infinite recursion
+    if (in_array($taskName, ['task:timer:before', 'task:timer:after', 'deploy:timing:summary'])) {
+        continue;
+    }
+    
+    // Add timing hooks
+    before($taskName, 'task:timer:before');
+    after($taskName, 'task:timer:after');
+}
 
 // Add the summary task to the end of the deployment
 after('deploy:success', 'deploy:timing:summary');
