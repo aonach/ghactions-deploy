@@ -12,6 +12,7 @@ require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
+require_once 'include/task_timer.php';
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
