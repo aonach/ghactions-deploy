@@ -13,10 +13,24 @@ require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
 
-// Simpler approach - just add a task to print task timings from GitHub Actions logs
+// Simplest approach - just add a task to explain how to view task timings
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
+
+// Create a simple task to explain how to view task timing in GitHub Actions
+desc('Show task timing information');
+task('deploy:timing:info', function() {
+    writeln('');
+    writeln('📊 Task Timing Information');
+    writeln('');
+    writeln('To view the timing for each deployment task in GitHub Actions:');
+    writeln('1. View the workflow run in GitHub Actions');
+    writeln('2. Expand the "Deploy project" step');
+    writeln('3. The time for each task is shown on the right side of the logs');
+    writeln('4. The total deployment time is shown at the top of the log');
+    writeln('');
+});
 
 /**
  * Config of hosts
@@ -172,31 +186,11 @@ task('magento:cache:flush', function () {
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
 
-// Add GitHub Actions group markers for better visibility
-on('task:before', function($task) {
-    writeln("##[group]⏱️ Starting task: " . $task->getName());
-});
-
-on('task:success', function($task) {
-    writeln("##[endgroup]");
-});
-
-// Create a task that logs deploy complete
-desc('Log deployment completion');
-task('deploy:log:complete', function() {
-    writeln('');
-    writeln('##[group]✅ Deployment Complete');
-    writeln('');
-    writeln('💡 To view task timing in GitHub Actions:');
-    writeln('1. Look at the logs for each task');
-    writeln('2. Each task will have its own group with timing information');
-    writeln('3. The total time for the deployment is shown at the top of the log');
-    writeln('');
-    writeln('##[endgroup]');
-});
+// No event hooks - they don't work in this version of Deployer
 
 desc('Deploy your project');
 task('deploy', [
+    'deploy:timing:info',
     'deploy:prepare',
     'deploy:vendors',
     'deploy:shared',
@@ -212,7 +206,7 @@ task('deploy', [
     'deploy:unlock',
     'deploy:cleanup',
     'deploy:success',
-    'deploy:log:complete'
+    'deploy:timing:info'
 ]);
 
 after('deploy:failed', 'deploy:unlock');
