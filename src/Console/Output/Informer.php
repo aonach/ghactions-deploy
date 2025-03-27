@@ -65,11 +65,8 @@ class Informer
         if ($shouldReplaceTaskMark) {
             $this->output->writeln("\r\033[K\033[1A\r<info>✔</info>");
         } else {
-            if ($this->output->getVerbosity() == OutputInterface::VERBOSITY_NORMAL) {
-                $this->output->writeln("<info>✔</info> Ok");
-            } else {
-                $this->output->writeln("<info>✔</info> Ok [$taskTime]");
-            }
+            // Always show task execution time regardless of verbosity level
+            $this->output->writeln("<info>✔</info> Ok [$taskTime]");
             $this->output->writeln("##[endgroup]");
         }
     }
