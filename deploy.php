@@ -13,9 +13,7 @@ require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
 
-// Task timing variables
-set('start_times', []);
-set('task_durations', []);
+// Simpler approach - just add a task to print task timings from GitHub Actions logs
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
@@ -174,103 +172,47 @@ task('magento:cache:flush', function () {
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
 
-// Define a function to handle task timing
-function timeTask($taskCallback, $taskName) {
-    return function() use ($taskCallback, $taskName) {
-        // Mark the start of the task with GitHub Actions group
-        writeln("##[group]⏱️ Task: $taskName");
-        
-        // Record start time
-        $startTime = microtime(true);
-        set('start_times', array_merge(get('start_times', []), [$taskName => $startTime]));
-        
-        // Run the original task
-        $result = $taskCallback();
-        
-        // Calculate and display duration
-        $endTime = microtime(true);
-        $duration = $endTime - $startTime;
-        
-        // Format time nicely
-        $seconds = floor($duration);
-        $milliseconds = round(($duration - $seconds) * 1000);
-        $formattedTime = ($seconds > 0 ? "{$seconds}s " : "") . "{$milliseconds}ms";
-        
-        // Store for summary
-        $durations = get('task_durations', []);
-        $durations[$taskName] = $duration;
-        set('task_durations', $durations);
-        
-        // Display timing info
-        writeln("⏱️ Completed in: $formattedTime");
-        writeln("##[endgroup]");
-        
-        return $result;
-    };
-}
+// Add GitHub Actions group markers for better visibility
+on('task:before', function($task) {
+    writeln("##[group]⏱️ Starting task: " . $task->getName());
+});
 
-// Create the timing summary task
-desc('Show timing summary');
-task('timing:summary', function() {
-    writeln("");
-    writeln("##[group]⏱️ Task Timing Summary (longest first)");
-    
-    $durations = get('task_durations', []);
-    
-    // Sort by duration (longest first)
-    arsort($durations);
-    
-    // Display the sorted task timings
-    foreach ($durations as $taskName => $duration) {
-        $seconds = floor($duration);
-        $milliseconds = round(($duration - $seconds) * 1000);
-        $formattedTime = ($seconds > 0 ? "{$seconds}s " : "") . "{$milliseconds}ms";
-        writeln("⏱️ $taskName: $formattedTime");
-    }
-    
-    // Calculate and show total time
-    $totalTime = array_sum($durations);
-    $totalSeconds = floor($totalTime);
-    $totalMinutes = floor($totalSeconds / 60);
-    $remainingSeconds = $totalSeconds % 60;
-    $totalMilliseconds = round(($totalTime - $totalSeconds) * 1000);
-    
-    $formattedTotal = "";
-    if ($totalMinutes > 0) {
-        $formattedTotal .= "{$totalMinutes}m ";
-    }
-    if ($remainingSeconds > 0 || $totalMinutes > 0) {
-        $formattedTotal .= "{$remainingSeconds}s ";
-    }
-    $formattedTotal .= "{$totalMilliseconds}ms";
-    
-    writeln("");
-    writeln("⏱️ Total measured task time: $formattedTotal");
+on('task:success', function($task) {
     writeln("##[endgroup]");
 });
 
-// Wrap existing tasks with timing function
-$deployTasks = [
-    'deploy:prepare', 'deploy:vendors', 'deploy:shared',
-    'magento:apply:patches', 'magento:di:compile', 'npm run build-prod',
-    'magento:deploy:assets', 'magento:upgrade:db', 'magento:create:symlinks',
-    'magento:cache:flush', 'deploy:symlink', 'php:opcache:flush',
-    'deploy:unlock', 'deploy:cleanup', 'deploy:success'
-];
-
-// Wrap each task with our timing logic
-foreach ($deployTasks as $taskName) {
-    // Get the original task
-    $originalTask = task($taskName);
-    if ($originalTask) {
-        // Get the original callback
-        $originalCallback = $originalTask->getCallback();
-        // Replace it with our timed version
-        $originalTask->callback(timeTask($originalCallback, $taskName));
-    }
-}
+// Create a task that logs deploy complete
+desc('Log deployment completion');
+task('deploy:log:complete', function() {
+    writeln('');
+    writeln('##[group]✅ Deployment Complete');
+    writeln('');
+    writeln('💡 To view task timing in GitHub Actions:');
+    writeln('1. Look at the logs for each task');
+    writeln('2. Each task will have its own group with timing information');
+    writeln('3. The total time for the deployment is shown at the top of the log');
+    writeln('');
+    writeln('##[endgroup]');
+});
 
 desc('Deploy your project');
-task('deploy', array_merge($deployTasks, ['timing:summary']));
+task('deploy', [
+    'deploy:prepare',
+    'deploy:vendors',
+    'deploy:shared',
+    'magento:apply:patches',
+    'magento:di:compile',
+    'npm run build-prod',
+    'magento:deploy:assets',
+    'magento:upgrade:db',
+    'magento:create:symlinks',
+    'magento:cache:flush',
+    'deploy:symlink',
+    'php:opcache:flush',
+    'deploy:unlock',
+    'deploy:cleanup',
+    'deploy:success',
+    'deploy:log:complete'
+]);
 
 after('deploy:failed', 'deploy:unlock');
