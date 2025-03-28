@@ -209,6 +209,7 @@ task('timer:stop', function () {
     $endTaskTime= microtime(true);
     $duration = $endTaskTime - $startTaskTime;
     writeln("timer zeb stopped $endTaskTime");
+    writeln("timer zeb start time using $startTaskTime");
     writeln("Task took $duration seconds");
 });
 
