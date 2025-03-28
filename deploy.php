@@ -22,8 +22,7 @@ function log_time($task_name, $start_time) {
     writeln("Task $task_name took $duration seconds");
 }
 
- $startTaskTime=0;
- $endTaskTime=0;
+// These will be managed with set() and get() instead of global variables
 
 /**
  * Config of hosts
@@ -199,17 +198,16 @@ task('magento:cache:flush', function () {
 
 
 task('timer:start', function () {
-    global $startTaskTime;
-    $startTaskTime= microtime(true);
-    writeln("timer zeb started $startTaskTime");
+    set('task_start_time', microtime(true));
+    writeln("timer zeb started " . get('task_start_time'));
 });
 
 task('timer:stop', function () {
-    global $startTaskTime;
-    $endTaskTime= microtime(true);
-    $duration = $endTaskTime - $startTaskTime;
-    writeln("timer zeb stopped $endTaskTime");
-    writeln("timer zeb start time using $startTaskTime");
+    $startTime = get('task_start_time');
+    $endTime = microtime(true);
+    $duration = $endTime - $startTime;
+    writeln("timer zeb stopped $endTime");
+    writeln("timer zeb start time using $startTime");
     writeln("Task took $duration seconds");
 });
 
