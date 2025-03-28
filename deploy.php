@@ -7,7 +7,6 @@ use Deployer\Exception\GracefulShutdownException;
 use Deployer\Exception\RunException;
 use Deployer\Host\Host;
 
-
 require_once 'recipe/common.php';
 require_once 'include/opcache.php';
 require_once 'include/prepare_config.php';
@@ -15,6 +14,12 @@ require_once 'include/update_code.php';
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
+
+function log_time($task_name, $start_time) {
+    $end_time = microtime(true);
+    $duration = $end_time - $start_time;
+    writeln("Task $task_name took $duration seconds");
+}
 
 /**
  * Config of hosts
@@ -79,6 +84,7 @@ set('m2_version', function () {
  */
 desc('Magento2 apply patches');
 task('magento:apply:patches', function () {
+    $start_time = microtime(true);
     cd('{{release_path}}');
     run('
     for patch in patch/*.patch; do
@@ -86,15 +92,19 @@ task('magento:apply:patches', function () {
             {{bin/git}} apply -v $patch || printf "##[%s]The patch $patch is not applicable" "error";
         fi;
     done');
+    log_time('magento:apply:patches', $start_time);
 });
 
 desc('Magento2 dependency injection compile');
 task('magento:di:compile', function () {
+    $start_time = microtime(true);
     run('{{bin/php}} {{release_path}}/bin/magento setup:di:compile');
+    log_time('magento:di:compile', $start_time);
 });
 
 desc('Hyva styles compile (if applicable)');
 task('npm run build-prod', function () {
+    $start_time = microtime(true);
 
     if ((bool)get('is_hyva_project')) {
         cd('{{release_path}}/{{hyva_path}}/web/tailwind');
@@ -104,10 +114,12 @@ task('npm run build-prod', function () {
         writeln('Not applicable. This is not a Hyva project :(');
     }
 
+    log_time('npm run build-prod', $start_time);
 });
 
 desc('Magento2 deploy assets');
 task('magento:deploy:assets', function () {
+    $start_time = microtime(true);
     // Magento 2.1 has different arguments for setup:static-content:deploy, so
     // we need to do the condition to take this
     $additionalOptions = version_compare(get('m2_version'), '2.2', '>=') ? '--force' : '--quiet';
@@ -116,14 +128,18 @@ task('magento:deploy:assets', function () {
         $additionalOptions . ' ' .
         get('asset_locales')
     );
+
+    log_time('magento:deploy:assets', $start_time);
 });
 
 desc('Magento2 create symlinks');
 task('magento:create:symlinks', function () {
+    $start_time = microtime(true);
     cd('{{release_path}}');
     foreach (get('symlinks') as $key => $value) {
         run('ln -sf ' . $value . ' ' . $key);
     }
+    log_time('magento:create:symlinks', $start_time);
 });
 
 set('database_upgrade_needed', function () {
@@ -152,6 +168,7 @@ set('database_upgrade_needed', function () {
 
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function () {
+    $start_time = microtime(true);
     // new method/version from https://github.com/deployphp/deployer/blob/master/recipe/magento2.php
     // detect if setup:upgrade is needed
     $currentExists = test('[ -d {{deploy_path}}/current ]');
@@ -162,12 +179,16 @@ task('magento:upgrade:db', function () {
         run('{{bin/php}} {{release_path}}/bin/magento setup:db-data:upgrade --no-interaction');
         run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
     }
+
+    log_time('magento:upgrade:db', $start_time);
 })->once();
 
 desc('Magento2 cache flush');
 task('magento:cache:flush', function () {
+    $start_time = microtime(true);
     run('{{bin/php}} {{release_path}}/bin/magento cache:flush');
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
+    log_time('magento:cache:flush', $start_time);
 });
 
 desc('Deploy your project');
