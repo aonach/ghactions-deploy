@@ -3,10 +3,5 @@
     "description": "Deploy to servers via Github Actions + Deployer",
     "require": {
         "deployer/deployer": "^7.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "Deployer\\": "src/"
-        }
     }
 }
