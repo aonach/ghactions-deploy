@@ -5,8 +5,9 @@
  * file that was distributed with this source code.
  */
 
-namespace Deployer\Console\Output;
+namespace Deployer\src\Console\Output;
 
+use Deployer\Console\Output\OutputWatcher;
 use Deployer\Deployer;
 use Deployer\Host\Host;
 use Deployer\Task\Task;
