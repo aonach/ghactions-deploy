@@ -22,6 +22,9 @@ function log_time($task_name, $start_time) {
     writeln("Task $task_name took $duration seconds");
 }
 
+ $startTaskTime=0;
+ $endTaskTime=0;
+
 /**
  * Config of hosts
  */
@@ -196,11 +199,17 @@ task('magento:cache:flush', function () {
 
 
 task('timer:start', function () {
+    global $startTaskTime;
+    $startTaskTime= microtime(true);
     writeln('timer zeb started');
 });
 
 task('timer:stop', function () {
-    writeln('timer zeeb stopped');
+    global $startTaskTime;
+    global $endTaskTime;
+    $endTaskTime= microtime(true);
+    $duration = $endTaskTime - $startTaskTime;
+    writeln("Task took $duration seconds");
 });
 
 before('deploy:prepare', 'timer:start');
