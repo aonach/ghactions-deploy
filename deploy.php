@@ -5,6 +5,7 @@ namespace Deployer;
 use Deployer\Exception\ConfigurationException;
 use Deployer\Exception\GracefulShutdownException;
 use Deployer\Exception\RunException;
+use Deployer\Deployer;
 use Deployer\Host\Host;
 
 require_once 'recipe/common.php';
@@ -28,6 +29,7 @@ import('hosts.yml');
 foreach (Deployer::get()->hosts as $host) {
     $host->setSshArguments(['-o StrictHostKeyChecking=no']);
 }
+
 
 /**
  * Configuration
@@ -190,6 +192,48 @@ task('magento:cache:flush', function () {
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
     log_time('magento:cache:flush', $start_time);
 });
+
+
+
+task('timer:start', function () {
+    writeln('timer zeb started');
+});
+
+task('timer:stop', function () {
+    writeln('timer zeeb stopped');
+});
+
+before('deploy:prepare', 'timer:start');
+after('deploy:prepare', 'timer:stop');
+before('deploy:vendors', 'timer:start');
+after('deploy:vendors', 'timer:stop');
+before('deploy:shared', 'timer:start');
+after('deploy:shared', 'timer:stop');
+before('magento:apply:patches', 'timer:start');
+after('magento:apply:patches', 'timer:stop');
+before('magento:di:compile', 'timer:start');
+after('magento:di:compile', 'timer:stop');
+before('npm run build-prod', 'timer:start');
+after('npm run build-prod', 'timer:stop');
+before('magento:deploy:assets', 'timer:start');
+after('magento:deploy:assets', 'timer:stop');
+before('magento:upgrade:db', 'timer:start');
+after('magento:upgrade:db', 'timer:stop');
+before('magento:create:symlinks', 'timer:start');
+after('magento:create:symlinks', 'timer:stop');
+before('magento:cache:flush', 'timer:start');
+after('magento:cache:flush', 'timer:stop');
+before('deploy:symlink', 'timer:start');
+after('deploy:symlink', 'timer:stop');
+before('php:opcache:flush', 'timer:start');
+after('php:opcache:flush', 'timer:stop');
+before('deploy:unlock', 'timer:start');
+after('deploy:unlock', 'timer:stop');
+before('deploy:cleanup', 'timer:start');
+after('deploy:cleanup', 'timer:stop');
+before('deploy:success', 'timer:start');
+after('deploy:success', 'timer:stop');
+
 
 desc('Deploy your project');
 task('deploy', [
