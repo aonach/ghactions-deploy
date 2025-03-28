@@ -201,14 +201,14 @@ task('magento:cache:flush', function () {
 task('timer:start', function () {
     global $startTaskTime;
     $startTaskTime= microtime(true);
-    writeln('timer zeb started');
+    writeln("timer zeb started $startTaskTime");
 });
 
 task('timer:stop', function () {
     global $startTaskTime;
-    global $endTaskTime;
     $endTaskTime= microtime(true);
     $duration = $endTaskTime - $startTaskTime;
+    writeln("timer zeb stopped $endTaskTime");
     writeln("Task took $duration seconds");
 });
 
