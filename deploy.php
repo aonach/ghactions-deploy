@@ -7,6 +7,7 @@ use Deployer\Exception\GracefulShutdownException;
 use Deployer\Exception\RunException;
 use Deployer\Deployer;
 use Deployer\Host\Host;
+use Deployer\Task\Context;
 
 require_once 'recipe/common.php';
 require_once 'include/opcache.php';
@@ -198,129 +199,69 @@ task('magento:cache:flush', function () {
 });
 
 
-task('timer:start', function ($params) {
-    $taskName = $params['task'] ?? 'unknown';
+task('timer:start', function () {
+    try {
+        $taskName = Context::get()->getTask()->getName();
+        // Remove "timer:start" from task name
+        $taskName = str_replace('timer:start:', '', $taskName);
+        writeln("⏱️ Starting task: $taskName");
+    } catch (\Exception $e) {
+        writeln("⏱️ Starting task");
+    }
     set('task_start_time', microtime(true));
-    set('current_task_name', $taskName);
-    writeln("⏱️ Starting task: $taskName");
 });
 
 
-task('timer:stop', function ($params) {
-    $taskName = $params['task'] ?? get('current_task_name', 'unknown');
+task('timer:stop', function () {
     $startTime = get('task_start_time');
     $endTime = microtime(true);
     $duration = $endTime - $startTime;
     $taskTimings = get('task_timings');
-    $taskTimings[$taskName] = $duration;
+    
+    try {
+        $taskName = Context::get()->getTask()->getName();
+        // Remove "timer:stop" from task name
+        $taskName = str_replace('timer:stop:', '', $taskName);
+        $taskTimings[$taskName] = $duration;
+        writeln("✅ Completed task: $taskName (took $duration seconds)");
+    } catch (\Exception $e) {
+        $taskTimings[] = $duration;
+        writeln("✅ Task completed (took $duration seconds)");
+    }
+    
     set('task_timings', $taskTimings);
-    writeln("✅ Completed task: $taskName (took $duration seconds)");
 });
 
-before('deploy:prepare', function() {
-    invoke('timer:start', ['task' => 'deploy:prepare']);
-});
-after('deploy:prepare', function() {
-    invoke('timer:stop', ['task' => 'deploy:prepare']);
-});
-
-before('deploy:vendors', function() {
-    invoke('timer:start', ['task' => 'deploy:vendors']);
-});
-after('deploy:vendors', function() {
-    invoke('timer:stop', ['task' => 'deploy:vendors']);
-});
-
-before('deploy:shared', function() {
-    invoke('timer:start', ['task' => 'deploy:shared']);
-});
-after('deploy:shared', function() {
-    invoke('timer:stop', ['task' => 'deploy:shared']);
-});
-
-before('magento:apply:patches', function() {
-    invoke('timer:start', ['task' => 'magento:apply:patches']);
-});
-after('magento:apply:patches', function() {
-    invoke('timer:stop', ['task' => 'magento:apply:patches']);
-});
-
-before('magento:di:compile', function() {
-    invoke('timer:start', ['task' => 'magento:di:compile']);
-});
-after('magento:di:compile', function() {
-    invoke('timer:stop', ['task' => 'magento:di:compile']);
-});
-
-before('npm run build-prod', function() {
-    invoke('timer:start', ['task' => 'npm run build-prod']);
-});
-after('npm run build-prod', function() {
-    invoke('timer:stop', ['task' => 'npm run build-prod']);
-});
-
-before('magento:deploy:assets', function() {
-    invoke('timer:start', ['task' => 'magento:deploy:assets']);
-});
-after('magento:deploy:assets', function() {
-    invoke('timer:stop', ['task' => 'magento:deploy:assets']);
-});
-
-before('magento:upgrade:db', function() {
-    invoke('timer:start', ['task' => 'magento:upgrade:db']);
-});
-after('magento:upgrade:db', function() {
-    invoke('timer:stop', ['task' => 'magento:upgrade:db']);
-});
-
-before('magento:create:symlinks', function() {
-    invoke('timer:start', ['task' => 'magento:create:symlinks']);
-});
-after('magento:create:symlinks', function() {
-    invoke('timer:stop', ['task' => 'magento:create:symlinks']);
-});
-
-before('magento:cache:flush', function() {
-    invoke('timer:start', ['task' => 'magento:cache:flush']);
-});
-after('magento:cache:flush', function() {
-    invoke('timer:stop', ['task' => 'magento:cache:flush']);
-});
-
-before('deploy:symlink', function() {
-    invoke('timer:start', ['task' => 'deploy:symlink']);
-});
-after('deploy:symlink', function() {
-    invoke('timer:stop', ['task' => 'deploy:symlink']);
-});
-
-before('php:opcache:flush', function() {
-    invoke('timer:start', ['task' => 'php:opcache:flush']);
-});
-after('php:opcache:flush', function() {
-    invoke('timer:stop', ['task' => 'php:opcache:flush']);
-});
-
-before('deploy:unlock', function() {
-    invoke('timer:start', ['task' => 'deploy:unlock']);
-});
-after('deploy:unlock', function() {
-    invoke('timer:stop', ['task' => 'deploy:unlock']);
-});
-
-before('deploy:cleanup', function() {
-    invoke('timer:start', ['task' => 'deploy:cleanup']);
-});
-after('deploy:cleanup', function() {
-    invoke('timer:stop', ['task' => 'deploy:cleanup']);
-});
-
-before('deploy:success', function() {
-    invoke('timer:start', ['task' => 'deploy:success']);
-});
-after('deploy:success', function() {
-    invoke('timer:stop', ['task' => 'deploy:success']);
-});
+before('deploy:prepare', 'timer:start');
+after('deploy:prepare', 'timer:stop');
+before('deploy:vendors', 'timer:start');
+after('deploy:vendors', 'timer:stop');
+before('deploy:shared', 'timer:start');
+after('deploy:shared', 'timer:stop');
+before('magento:apply:patches', 'timer:start');
+after('magento:apply:patches', 'timer:stop');
+before('magento:di:compile', 'timer:start');
+after('magento:di:compile', 'timer:stop');
+before('npm run build-prod', 'timer:start');
+after('npm run build-prod', 'timer:stop');
+before('magento:deploy:assets', 'timer:start');
+after('magento:deploy:assets', 'timer:stop');
+before('magento:upgrade:db', 'timer:start');
+after('magento:upgrade:db', 'timer:stop');
+before('magento:create:symlinks', 'timer:start');
+after('magento:create:symlinks', 'timer:stop');
+before('magento:cache:flush', 'timer:start');
+after('magento:cache:flush', 'timer:stop');
+before('deploy:symlink', 'timer:start');
+after('deploy:symlink', 'timer:stop');
+before('php:opcache:flush', 'timer:start');
+after('php:opcache:flush', 'timer:stop');
+before('deploy:unlock', 'timer:start');
+after('deploy:unlock', 'timer:stop');
+before('deploy:cleanup', 'timer:start');
+after('deploy:cleanup', 'timer:stop');
+before('deploy:success', 'timer:start');
+after('deploy:success', 'timer:stop');
 
 
 desc('Deploy your project');
