@@ -200,36 +200,23 @@ task('magento:cache:flush', function () {
 
 
 task('timer:start', function () {
-    try {
-        $taskName = Context::get()->getTask()->getName();
-        // Remove "timer:start" from task name
-        $taskName = str_replace('timer:start:', '', $taskName);
-        writeln("⏱️ Starting task: $taskName");
-    } catch (\Exception $e) {
-        writeln("⏱️ Starting task");
-    }
     set('task_start_time', microtime(true));
+    writeln("timer zeb started " . get('task_start_time'));
 });
+// option for hidden
 
 
 task('timer:stop', function () {
     $startTime = get('task_start_time');
     $endTime = microtime(true);
     $duration = $endTime - $startTime;
-    $taskTimings = get('task_timings');
-    
-    try {
-        $taskName = Context::get()->getTask()->getName();
-        // Remove "timer:stop" from task name
-        $taskName = str_replace('timer:stop:', '', $taskName);
-        $taskTimings[$taskName] = $duration;
-        writeln("✅ Completed task: $taskName (took $duration seconds)");
-    } catch (\Exception $e) {
-        $taskTimings[] = $duration;
-        writeln("✅ Task completed (took $duration seconds)");
-    }
-    
+    $taskTimings=get('task_timings');
+    $taskTimings[]=$duration;
     set('task_timings', $taskTimings);
+    writeln("timer zeb stopped $endTime");
+    writeln("timer zeb start time using $startTime");
+    writeln("Task took $duration seconds");
+    writeln(print_r($taskTimings, true));
 });
 
 before('deploy:prepare', 'timer:start');
