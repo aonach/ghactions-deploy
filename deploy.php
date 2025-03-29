@@ -82,6 +82,7 @@ set('m2_version', function () {
     return $regs[0];
 });
 
+set ('task_timings',[]);
 
 /**
  * Tasks
@@ -201,17 +202,23 @@ task('timer:start', function () {
     set('task_start_time', microtime(true));
     writeln("timer zeb started " . get('task_start_time'));
 });
+// option for hidden
+
 
 task('timer:stop', function () {
     $startTime = get('task_start_time');
     $endTime = microtime(true);
     $duration = $endTime - $startTime;
+    $taskTimings=get('task_timings');
+    $taskTimings[]=$duration;
+    set('task_timings', $taskTimings);
     writeln("timer zeb stopped $endTime");
     writeln("timer zeb start time using $startTime");
     writeln("Task took $duration seconds");
+    writeln(print_r($taskTimings, true));
 });
 
-before('deploy:prepare', 'timer:start');
+before('deploy:prepare', 'timer:start', );
 after('deploy:prepare', 'timer:stop');
 before('deploy:vendors', 'timer:start');
 after('deploy:vendors', 'timer:stop');
