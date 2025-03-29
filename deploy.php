@@ -16,7 +16,8 @@ require_once 'include/update_code.php';
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
 
-function log_time($task_name, $start_time) {
+function log_time($task_name, $start_time)
+{
     $end_time = microtime(true);
     $duration = $end_time - $start_time;
     writeln("Task $task_name took $duration seconds");
@@ -82,7 +83,7 @@ set('m2_version', function () {
     return $regs[0];
 });
 
-set ('task_timings',[]);
+set('task_timings', []);
 
 /**
  * Tasks
@@ -197,28 +198,28 @@ task('magento:cache:flush', function () {
 });
 
 
-
 task('timer:start', function () {
+    $taskName = currentTask()->getName();
+    $parentTask = str_replace('timer:start:', '', $taskName);
     set('task_start_time', microtime(true));
-    writeln("timer zeb started " . get('task_start_time'));
+    set('current_timed_task', $parentTask);
+    writeln("⏱️ Starting task: $parentTask");
 });
 // option for hidden
 
 
 task('timer:stop', function () {
+    $taskName = get('current_timed_task');
     $startTime = get('task_start_time');
     $endTime = microtime(true);
     $duration = $endTime - $startTime;
-    $taskTimings=get('task_timings');
-    $taskTimings[]=$duration;
+    $taskTimings = get('task_timings');
+    $taskTimings[$taskName] = $duration;
     set('task_timings', $taskTimings);
-    writeln("timer zeb stopped $endTime");
-    writeln("timer zeb start time using $startTime");
-    writeln("Task took $duration seconds");
-    writeln(print_r($taskTimings, true));
-});
+    writeln("✅ Completed task: $taskName (took $duration seconds)");
+})->hidden();
 
-before('deploy:prepare', 'timer:start', );
+before('deploy:prepare', 'timer:start');
 after('deploy:prepare', 'timer:stop');
 before('deploy:vendors', 'timer:start');
 after('deploy:vendors', 'timer:stop');
