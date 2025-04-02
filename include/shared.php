@@ -34,59 +34,128 @@ task('deploy:shared', function () {
 
     $copyVerbosity = output()->getVerbosity() === OutputInterface::VERBOSITY_DEBUG ? 'v' : '';
 
-    foreach (get('shared_dirs') as $dir) {
+    $sharedDirs = get('shared_dirs');
+    if (!empty($sharedDirs)) {
         run("echo 'zebedee using my shared dirs'");
-        // Make sure all path without tailing slash.
-        $dir = trim($dir, '/');
-
-        // Check if shared dir does not exist.
-        if (!test("[ -d $sharedPath/$dir ]")) {
-            // Create shared dir if it does not exist.
-            run("mkdir -p $sharedPath/$dir");
-            // If release contains shared dir, copy that dir from release to shared.
-            if (test("[ -d $(echo {{release_path}}/$dir) ]")) {
-                run("cp -r$copyVerbosity {{release_path}}/$dir $sharedPath/" . dirname($dir));
+        
+        // Process directories in batches
+        $batchSize = 100;
+        $batches = array_chunk($sharedDirs, $batchSize);
+        
+        foreach ($batches as $batch) {
+            // Commands for checking and creating shared directories
+            $mkdirCommands = [];
+            $copyCommands = [];
+            $rmCommands = [];
+            $mkdirPathCommands = [];
+            $symlinkCommands = [];
+            
+            foreach ($batch as $dir) {
+                // Make sure all path without tailing slash.
+                $dir = trim($dir, '/');
+                
+                // Check if shared dir does not exist and create it if needed
+                $mkdirCommands[] = "if [ ! -d $sharedPath/$dir ]; then mkdir -p $sharedPath/$dir; fi";
+                
+                // If release contains shared dir, copy that dir from release to shared
+                $copyCommands[] = "if [ ! -d $sharedPath/$dir ] && [ -d {{release_path}}/$dir ]; then cp -r$copyVerbosity {{release_path}}/$dir $sharedPath/" . dirname($dir) . "; fi";
+                
+                // Remove from source
+                $rmCommands[] = "rm -rf {{release_path}}/$dir";
+                
+                // Create path to shared dir in release dir
+                $mkdirPathCommands[] = "mkdir -p `dirname {{release_path}}/$dir`";
+                
+                // Symlink shared dir to release dir
+                $symlinkCommands[] = "{{bin/symlink}} $sharedPath/$dir {{release_path}}/$dir";
+            }
+            
+            // Execute commands in batches
+            if (!empty($mkdirCommands)) {
+                run(implode('; ', $mkdirCommands));
+            }
+            
+            if (!empty($copyCommands)) {
+                run(implode('; ', $copyCommands));
+            }
+            
+            if (!empty($rmCommands)) {
+                run(implode('; ', $rmCommands));
+            }
+            
+            if (!empty($mkdirPathCommands)) {
+                run(implode('; ', $mkdirPathCommands));
+            }
+            
+            if (!empty($symlinkCommands)) {
+                run(implode('; ', $symlinkCommands));
             }
         }
-
-        // Remove from source.
-        run("rm -rf {{release_path}}/$dir");
-
-        // Create path to shared dir in release dir if it does not exist.
-        // Symlink will not create the path and will fail otherwise.
-        run("mkdir -p `dirname {{release_path}}/$dir`");
-
-        // Symlink shared dir to release dir
-        run("{{bin/symlink}} $sharedPath/$dir {{release_path}}/$dir");
     }
 
-    foreach (get('shared_files') as $file) {
+    $sharedFiles = get('shared_files');
+    if (!empty($sharedFiles)) {
         run("echo 'zebedee using my shared files'");
-
-        $dirname = dirname(parse($file));
-
-        // Create dir of shared file if not existing
-        if (!test("[ -d $sharedPath/$dirname ]")) {
-            run("mkdir -p $sharedPath/$dirname");
+        
+        // Process files in batches
+        $batchSize = 100;
+        $batches = array_chunk($sharedFiles, $batchSize);
+        
+        foreach ($batches as $batch) {
+            // Commands for processing shared files
+            $mkdirCommands = [];
+            $copyCommands = [];
+            $rmCommands = [];
+            $mkdirReleaseCommands = [];
+            $touchCommands = [];
+            $symlinkCommands = [];
+            
+            foreach ($batch as $file) {
+                $dirname = dirname(parse($file));
+                
+                // Create dir of shared file if not existing
+                $mkdirCommands[] = "if [ ! -d $sharedPath/$dirname ]; then mkdir -p $sharedPath/$dirname; fi";
+                
+                // Check if shared file does not exist in shared and file exists in release
+                $copyCommands[] = "if [ ! -f $sharedPath/$file ] && [ -f {{release_path}}/$file ]; then cp -r$copyVerbosity {{release_path}}/$file $sharedPath/$file; fi";
+                
+                // Remove from source
+                $rmCommands[] = "if [ -f $(echo {{release_path}}/$file) ]; then rm -rf {{release_path}}/$file; fi";
+                
+                // Ensure dir is available in release
+                $mkdirReleaseCommands[] = "if [ ! -d $(echo {{release_path}}/$dirname) ]; then mkdir -p {{release_path}}/$dirname; fi";
+                
+                // Touch shared
+                $touchCommands[] = "[ -f $sharedPath/$file ] || touch $sharedPath/$file";
+                
+                // Symlink shared file to release file
+                $symlinkCommands[] = "{{bin/symlink}} $sharedPath/$file {{release_path}}/$file";
+            }
+            
+            // Execute commands in batches
+            if (!empty($mkdirCommands)) {
+                run(implode('; ', $mkdirCommands));
+            }
+            
+            if (!empty($copyCommands)) {
+                run(implode('; ', $copyCommands));
+            }
+            
+            if (!empty($rmCommands)) {
+                run(implode('; ', $rmCommands));
+            }
+            
+            if (!empty($mkdirReleaseCommands)) {
+                run(implode('; ', $mkdirReleaseCommands));
+            }
+            
+            if (!empty($touchCommands)) {
+                run(implode('; ', $touchCommands));
+            }
+            
+            if (!empty($symlinkCommands)) {
+                run(implode('; ', $symlinkCommands));
+            }
         }
-
-        // Check if shared file does not exist in shared.
-        // and file exist in release
-        if (!test("[ -f $sharedPath/$file ]") && test("[ -f {{release_path}}/$file ]")) {
-            // Copy file in shared dir if not present
-            run("cp -r$copyVerbosity {{release_path}}/$file $sharedPath/$file");
-        }
-
-        // Remove from source.
-        run("if [ -f $(echo {{release_path}}/$file) ]; then rm -rf {{release_path}}/$file; fi");
-
-        // Ensure dir is available in release
-        run("if [ ! -d $(echo {{release_path}}/$dirname) ]; then mkdir -p {{release_path}}/$dirname;fi");
-
-        // Touch shared
-        run("[ -f $sharedPath/$file ] || touch $sharedPath/$file");
-
-        // Symlink shared dir to release dir
-        run("{{bin/symlink}} $sharedPath/$file {{release_path}}/$file");
     }
 });
