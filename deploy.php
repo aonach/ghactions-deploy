@@ -186,7 +186,7 @@ task('deploy', [
     'deploy:symlink',
     'php:opcache:flush',
     'deploy:unlock',
+    'deploy:cleanup',
     'deploy:success'
 ]);
 after('deploy:failed', 'deploy:unlock');
-after('deploy:success', 'deploy:cleanup');
