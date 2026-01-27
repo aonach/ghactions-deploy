@@ -180,6 +180,10 @@ task('magento:cache:flush', function () {
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
 
+// Copy directories from previous release to speed up composer install
+// Enable per-host by setting copy_dirs: ['vendor'] in hosts.yml
+before('deploy:vendors', 'deploy:copy_dirs');
+
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
