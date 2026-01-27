@@ -20,6 +20,21 @@ You need to follow this simple steps to integrate in your project:
 
 7. Push a commit to dev/test/master branch!
 
+## Configuration
+
+### Git LFS
+
+By default, Git LFS files are skipped during deployment. This speeds up deployments when LFS is used for files not needed on servers (e.g., local database backups).
+
+To enable LFS file downloads for a specific host, add to your _hosts.yml_:
+
+```yaml
+production:
+  hostname: prod-server
+  remote_user: deploy
+  skip_lfs: false
+```
+
 ## Related links:
 
 https://deployer.org
