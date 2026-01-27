@@ -21,7 +21,7 @@ jobs:
         chmod 700 ~/.ssh/id_rsa
 
     - name: Checkout project
-      uses: actions/checkout@master
+      uses: actions/checkout@v4
 
     - name: Prepare Deployer
       run: |
