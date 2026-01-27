@@ -20,6 +20,23 @@ You need to follow this simple steps to integrate in your project:
 
 7. Push a commit to dev/test/master branch!
 
+## Configuration
+
+### Git LFS
+
+By default, Git LFS files are skipped during deployment (`skip_lfs: true`). This prevents large LFS objects (e.g., local database backups) from being downloaded to servers, saving both deployment time and disk space.
+
+To disable this, set `skip_lfs: false` in your _hosts.yml_:
+
+```yaml
+production:
+  hostname: prod-server
+  remote_user: deploy
+  skip_lfs: false
+```
+
+**Note:** The `skip_lfs` option uses `set('env', ...)` to configure the `GIT_LFS_SKIP_SMUDGE` environment variable. If your project needs additional environment variables, add them inside the same closure in _deploy.php_ rather than calling `set('env', ...)` separately, which would overwrite the LFS setting.
+
 ## Related links:
 
 https://deployer.org

@@ -33,6 +33,15 @@ set('repo_path', 'src');
 set('keep_releases', 3);
 set('asset_locales', 'en_US en_IE');
 
+// Skip Git LFS files during clone - these are typically dev database backups not needed on servers
+set('skip_lfs', true);
+set('env', function () {
+    if (get('skip_lfs', true)) {
+        return ['GIT_LFS_SKIP_SMUDGE' => '1'];
+    }
+    return [];
+});
+
 set('is_hyva_project', 0);
 set('hyva_path', 'app/design/frontend/Aonach/hyva');
 set('bin/npm', function () {
