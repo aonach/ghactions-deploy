@@ -49,10 +49,27 @@ task('php:opcache:flush', function() {
     done
     if [ "$FLUSHED" = "0" ]; then
         if [ -n "{{php_fcgi_fallback}}" ]; then
-            ~/cachetool/bin/cachetool opcache:reset --fcgi={{php_fcgi_fallback}} && \
-            ~/cachetool/bin/cachetool opcache:status --fcgi={{php_fcgi_fallback}} && \
-            echo "Opcache was cleared (fcgi {{php_fcgi_fallback}})" || \
-            { echo "ERROR: opcache flush FAILED via fcgi {{php_fcgi_fallback}}"; exit 1; }
+            # The reset triggers an asynchronous opcache restart; on a busy pool with a
+            # full cache it takes seconds, during which any opcache call returns false and
+            # cachetool throws "OPCache is restarting". So: only the reset itself is fatal
+            # (and "is restarting" from it means a restart is already clearing the cache,
+            # which is the outcome we want) - the status afterwards is informational and
+            # retries while the restart completes, but never fails the deploy.
+            RESET_OUT=$(~/cachetool/bin/cachetool opcache:reset --fcgi={{php_fcgi_fallback}} 2>&1)
+            if [ $? -eq 0 ]; then
+                echo "Opcache was cleared (fcgi {{php_fcgi_fallback}})"
+            elif echo "$RESET_OUT" | grep -q "OPCache is restart"; then
+                echo "Opcache restart already in progress - treating as cleared (fcgi {{php_fcgi_fallback}})"
+            else
+                echo "$RESET_OUT"
+                echo "ERROR: opcache flush FAILED via fcgi {{php_fcgi_fallback}}"
+                exit 1
+            fi
+            for attempt in 1 2 3; do
+                ~/cachetool/bin/cachetool opcache:status --fcgi={{php_fcgi_fallback}} 2>/dev/null && break
+                echo "opcache:status unavailable while the restart completes (attempt $attempt/3)"
+                sleep 5
+            done
         else
             echo "WARNING: no matching PHP-FPM socket and no php_fcgi_fallback configured - opcache was NOT flushed"
         fi
