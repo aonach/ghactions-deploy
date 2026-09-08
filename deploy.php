@@ -38,8 +38,8 @@ set('asset_locales', 'en_US en_IE');
 // failure is nasty and quiet: setup:static-content:deploy completes, Deployer then kills a
 // process group that has already exited, the failed `kill` exits 1, and the deploy dies BEFORE
 // deploy:symlink -- so the new release is built but never swapped in and the site silently keeps
-// serving the previous one. That is what left SportResponse's production on an unpatched release
-// during APSB26-92 (fixed there by a per-site deploy.php).
+// serving the previous one, while the deploy reports failure. During a security round that means
+// a release believed deployed is not actually live.
 //
 // Setting them here means every site inherits sane values. A site's own root deploy.php is
 // loaded AFTER this recipe (`require_once 'deployer/deploy.php'; set(...)`), so any explicit
