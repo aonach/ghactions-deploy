@@ -34,6 +34,19 @@ set('repo_path', 'src');
 set('keep_releases', 3);
 set('asset_locales', 'en_US en_IE');
 
+// Deployer's own defaults are too tight for a Magento asset build. When they are exceeded the
+// failure is nasty and quiet: setup:static-content:deploy completes, Deployer then kills a
+// process group that has already exited, the failed `kill` exits 1, and the deploy dies BEFORE
+// deploy:symlink -- so the new release is built but never swapped in and the site silently keeps
+// serving the previous one. That is what left SportResponse's production on an unpatched release
+// during APSB26-92 (fixed there by a per-site deploy.php).
+//
+// Setting them here means every site inherits sane values. A site's own root deploy.php is
+// loaded AFTER this recipe (`require_once 'deployer/deploy.php'; set(...)`), so any explicit
+// per-site value still overrides these.
+set('default_timeout', 600);      // 10 minutes
+set('default_idle_timeout', 300); // 5 minutes
+
 // Skip Git LFS files during clone - these are typically dev database backups not needed on servers
 set('skip_lfs', true);
 set('env', function () {

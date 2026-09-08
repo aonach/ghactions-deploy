@@ -30,8 +30,11 @@ task('php:opcache:flush', function() {
         run('{{bin/composer}} create-project gordalina/cachetool ~/cachetool');
     }
 
-    // Randomly go and try and update the cachetool if todays date is divisible by 3
-    run('(( $(date +%d) % 3 == 0 )) && {{bin/composer}} update -d ~/cachetool || echo "Not updating cachetool" ');
+    // Randomly go and try and update the cachetool if todays date is divisible by 3.
+    // 10# forces base 10: `date +%d` is zero-padded, so bash parsed 08 and 09 as octal and the
+    // arithmetic aborted with "value too great for base". The || swallowed it, so cachetool was
+    // never updated on the 8th or 9th of any month.
+    run('(( 10#$(date +%d) % 3 == 0 )) && {{bin/composer}} update -d ~/cachetool || echo "Not updating cachetool" ');
 
     run('
     FLUSHED=0
