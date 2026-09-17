@@ -182,6 +182,11 @@ task('magento:upgrade:db', function () {
 
     if ($currentExists && get('database_upgrade_needed')) {
         run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:enable');
+        // The cache is no longer flushed before the flip, so the config cache still holds the old
+        // release's view of things here. A release that adds a module or an MQ topic can fail the
+        // schema upgrade on that stale config, so clean just the config cache first. Same as the
+        // upstream recipe.
+        run('{{bin/php}} {{release_path}}/bin/magento cache:clean config');
         run('{{bin/php}} {{release_path}}/bin/magento setup:db-schema:upgrade --no-interaction');
         run('{{bin/php}} {{release_path}}/bin/magento setup:db-data:upgrade --no-interaction');
         run('{{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable');
@@ -190,10 +195,29 @@ task('magento:upgrade:db', function () {
 
 desc('Magento2 cache flush');
 task('magento:cache:flush', function () {
-    run('{{bin/php}} {{release_path}}/bin/magento cache:flush');
-    run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
+    // Runs after deploy:symlink, so `current` IS the new release by this point. Using the path
+    // explicitly (the same idiom as magento:upgrade:db) rather than {{bin/magento}} or
+    // {{release_path}} is deliberate: {{release_or_current_path}} is not reliable at this point in
+    // the flow, and going through `current` means the task fails loudly if the symlink did not
+    // actually move, instead of quietly flushing on behalf of a release that is not live.
+    run('{{bin/php}} {{deploy_path}}/current/bin/magento cache:flush');
+    run('{{bin/php}} {{deploy_path}}/current/bin/magento cache:enable');
 });
 
+// magento:cache:flush runs AFTER deploy:symlink, never before it. Flushing before the flip leaves
+// a window -- measured at 6-8 seconds on a real deploy -- in which the OLD release is still the one
+// serving traffic, and that traffic repopulates the shared Redis cache with old-generation entries.
+// Most of those are harmless because the next cache:clean removes them, but Magento writes some
+// entries with no tags and no TTL (Reflection MethodsMap is the one that bit us), and an untagged,
+// TTL-less entry written in that window survives every subsequent cache:clean indefinitely. The
+// symptom is a release that is live and correct on disk while the application keeps reading a map
+// of the previous release's interfaces, which breaks config saves with an undefined array key.
+//
+// Flushing after the flip closes the window: anything written by old-release traffic is discarded
+// by the flush, and everything written afterwards comes from the new release. This matches the
+// upstream Deployer recipe, which does `after('deploy:symlink', 'magento:cache:flush')`.
+//
+// See TASK-37113007 and aonach/workflows/CACHE-FLUSH-ORDERING.md for the full write-up.
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
@@ -205,8 +229,8 @@ task('deploy', [
     'magento:deploy:assets',
     'magento:upgrade:db',
     'magento:create:symlinks',
-    'magento:cache:flush',
     'deploy:symlink',
+    'magento:cache:flush',
     'php:opcache:flush',
     'deploy:unlock',
     'deploy:cleanup',
