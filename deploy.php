@@ -194,6 +194,22 @@ task('magento:cache:flush', function () {
     run('{{bin/php}} {{release_path}}/bin/magento cache:enable');
 });
 
+desc('Magento2 disable maintenance mode on the live release');
+task('magento:maintenance:disable', function () {
+    // magento:upgrade:db enables maintenance mode on `current` -- the LIVE release -- before it touches
+    // the database, and only disables it again on success. If anything in between fails the deploy
+    // aborts, deploy:unlock runs, and the live site is left in maintenance mode with nobody told.
+    // This runs from deploy:failed to take it back out. Always `current`, never {{bin/magento}} or
+    // {{release_path}}: at this point those resolve to the release that just failed, not the one
+    // serving traffic. Guarded so a failed first-ever deploy (no `current` yet) does not error here.
+    // Non-fatal on purpose: whatever happens, deploy:unlock must still run after it.
+    try {
+        run('if [ -d {{deploy_path}}/current ]; then {{bin/php}} {{deploy_path}}/current/bin/magento maintenance:disable; fi');
+    } catch (RunException $e) {
+        warning('Could not disable maintenance mode on current release: ' . $e->getMessage());
+    }
+});
+
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
@@ -212,4 +228,6 @@ task('deploy', [
     'deploy:cleanup',
     'deploy:success'
 ]);
+// On failure: get the live site out of maintenance mode first, then release the lock.
+after('deploy:failed', 'magento:maintenance:disable');
 after('deploy:failed', 'deploy:unlock');
