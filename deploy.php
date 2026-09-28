@@ -219,12 +219,17 @@ task('magento:cache:flush', function () {
 //
 // See TASK-37113007 and aonach/workflows/CACHE-FLUSH-ORDERING.md for the full write-up.
 //
-// deploy:shared is not listed again after deploy:vendors: Deployer 7's deploy:prepare already runs
-// it, and the second pass only re-created the same symlinks (~18s on a slow link).
+// deploy:shared runs twice ON PURPOSE: once in deploy:prepare, and again after deploy:vendors. It is
+// not redundant. composer install runs the magento2-base installer with magento-force: override, which
+// unlink()s any mapped file that already exists -- pub/.htaccess, .htaccess, app/etc/di.xml -- and
+// copies Magento's stock file in its place. That replaces the shared symlink the first pass made, so
+// without the second pass a release serves stock files instead of the shared ones. That happened on the
+// sportresponse test server (TASK-37178618): pub/.htaccess lost the site's basic auth.
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
     'deploy:vendors',
+    'deploy:shared',
     'magento:apply:patches',
     'magento:di:compile',
     'npm run build-prod',
