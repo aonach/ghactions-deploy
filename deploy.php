@@ -47,7 +47,9 @@ set('asset_locales', 'en_US en_IE');
 // sources; --no-parent only stops them being written out as themes of their own. So list every
 // theme assigned to a store view, the Hyvä checkout fallback theme, and the admin theme. A live
 // theme that is NOT listed serves 404s for its CSS/JS, so check design config before setting this.
-// Admin locales must cover every admin user's interface locale.
+// Admin locales must cover every admin user's interface locale. The store's default locale is always
+// added for the admin: the admin login page renders before any user is known, in the default-scope
+// general/locale/code, and without it the login page loses its CSS/JS.
 set('asset_themes_frontend', []);
 set('asset_themes_adminhtml', []);
 set('asset_locales_adminhtml', '');
@@ -198,8 +200,35 @@ task('magento:deploy:assets', function () {
     // One command per area, because the locales argument applies to every area in a command and the
     // admin rarely needs all the storefront locales. Magento does not clean pub/static between runs.
     run(staticContentDeployCommand('frontend', $frontendThemes, get('asset_locales')));
-    run(staticContentDeployCommand('adminhtml', $adminThemes, $adminLocales ?: get('asset_locales')));
+    run(staticContentDeployCommand('adminhtml', $adminThemes, $adminLocales ? adminLocales($adminLocales) : get('asset_locales')));
 });
+
+/**
+ * The configured admin locales plus the store's default locale, which the admin login page uses
+ * because no user is logged in yet. If the default can't be read, build the admin in every
+ * asset_locales locale, as before this setting existed.
+ */
+function adminLocales(string $configured): string
+{
+    $locales = preg_split('/\s+/', $configured, -1, PREG_SPLIT_NO_EMPTY);
+    try {
+        $output = run('{{bin/php}} {{release_path}}/bin/magento config:show general/locale/code');
+    } catch (RunException $e) {
+        warning('Could not read general/locale/code; building the admin in all asset_locales.');
+        return get('asset_locales');
+    }
+    $lines = preg_split('/\R/', trim($output));
+    $default = trim(end($lines));
+    if (!preg_match('/^[a-z]{2,3}_[A-Za-z]{2,4}$/', $default)) {
+        warning("Unexpected general/locale/code \"$default\"; building the admin in all asset_locales.");
+        return get('asset_locales');
+    }
+    if (!in_array($default, $locales, true)) {
+        $locales[] = $default;
+    }
+
+    return implode(' ', $locales);
+}
 
 desc('Magento2 create symlinks');
 task('magento:create:symlinks', function () {
