@@ -28,12 +28,12 @@ desc('Setting working path of repository');
 task('set:repo_path', function() {
     if(get('repo_path')) {
         set('keep_path', '{{deploy_path}}/.dep/.keep');
-        // One remote call. && so that a leftover .keep from an interrupted deploy still stops the
-        // deploy at mkdir, as it did when mkdir was its own run().
-        run('mkdir {{keep_path}} && shopt -s dotglob && ' .
-            'mv {{release_path}}/* {{keep_path}} && ' .
-            'mv {{keep_path}}/{{repo_path}}/* {{release_path}} && ' .
-            'rm -rf {{keep_path}}');
+        run('mkdir {{keep_path}}');
+        run('
+        shopt -s dotglob
+        mv {{release_path}}/* {{keep_path}}
+        mv {{keep_path}}/{{repo_path}}/* {{release_path}}');
+        run('rm -rf {{keep_path}}');
     }
 })->hidden();
 
