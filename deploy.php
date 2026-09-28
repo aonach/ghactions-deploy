@@ -16,6 +16,7 @@ require_once 'include/prepare_config.php';
 require_once 'include/update_code.php';
 require_once 'include/shared.php';
 require_once 'include/vendors.php';
+require_once 'include/cleanup.php';
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 
