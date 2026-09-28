@@ -346,6 +346,18 @@ task('magento:cache:flush', function () {
 // upstream Deployer recipe, which does `after('deploy:symlink', 'magento:cache:flush')`.
 //
 // See TASK-37113007 and aonach/workflows/CACHE-FLUSH-ORDERING.md for the full write-up.
+//
+// deploy:shared runs twice ON PURPOSE: once in deploy:prepare, and again after deploy:vendors. It is
+// not redundant. composer install runs the magento2-base installer with magento-force: override, which
+// unlink()s any mapped file that already exists -- pub/.htaccess, .htaccess, app/etc/di.xml -- and
+// copies Magento's stock file in its place. That replaces the shared symlink the first pass made, so
+// without the second pass a release serves stock files instead of the shared ones (e.g. a pub/.htaccess
+// that loses a test site's basic auth).
+// Deployer's own magento2 recipe runs deploy:shared only once because it only shares app/etc/env.php
+// and var/.maintenance.ip, which composer never writes. We also share pub/.htaccess (per-environment
+// settings such as basic auth), so we need the second pass. A site can also stop the installer
+// touching a file at all, e.g. a customised pub/.htaccess committed to the repo, by listing it in its
+// root composer.json: "extra": {"magento-deploy-ignore": {"magento/magento2-base": ["/pub/.htaccess"]}}.
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
