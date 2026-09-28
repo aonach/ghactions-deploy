@@ -183,8 +183,7 @@ task('npm run build-prod', function () {
 
     if ((bool)get('is_hyva_project')) {
         cd('{{release_path}}/{{hyva_path}}/web/tailwind');
-        run('{{bin/npm}} install');
-        run('{{bin/npm}} run build-prod');
+        run('{{bin/npm}} install && {{bin/npm}} run build-prod');
     } else {
         writeln('Not applicable. This is not a Hyva project :(');
     }
@@ -276,9 +275,13 @@ before('magento:deploy:assets', 'magento:sync:content_version');
 
 desc('Magento2 create symlinks');
 task('magento:create:symlinks', function () {
-    cd('{{release_path}}');
+    $commands = [];
     foreach (get('symlinks') as $key => $value) {
-        run('ln -sf ' . $value . ' ' . $key);
+        $commands[] = 'ln -sf ' . $value . ' ' . $key;
+    }
+    if ($commands) {
+        cd('{{release_path}}');
+        run(implode(' && ', $commands));
     }
 });
 
@@ -329,8 +332,8 @@ task('magento:cache:flush', function () {
     // {{release_path}} is deliberate: {{release_or_current_path}} is not reliable at this point in
     // the flow, and going through `current` means the task fails loudly if the symlink did not
     // actually move, instead of quietly flushing on behalf of a release that is not live.
-    run('{{bin/php}} {{deploy_path}}/current/bin/magento cache:flush');
-    run('{{bin/php}} {{deploy_path}}/current/bin/magento cache:enable');
+    run('{{bin/php}} {{deploy_path}}/current/bin/magento cache:flush && ' .
+        '{{bin/php}} {{deploy_path}}/current/bin/magento cache:enable');
 });
 
 // magento:cache:flush runs AFTER deploy:symlink, never before it. Flushing before the flip leaves
