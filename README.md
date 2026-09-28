@@ -48,7 +48,7 @@ production:
   asset_locales_adminhtml: en_US                           # optional; defaults to asset_locales
 ```
 
-A live theme that is not listed serves 404s for its CSS/JS, so check the design configuration (and the admin users' interface locales) first.
+A live theme that is not listed serves 404s for its CSS/JS, so check the design configuration (and the admin users' interface locales) first. The store's default locale (`general/locale/code`) is always added to the admin locales, because the admin login page uses it before anyone is logged in.
 
 ## Related links:
 
