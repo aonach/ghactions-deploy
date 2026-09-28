@@ -16,7 +16,6 @@ require_once 'include/shared.php';
 require_once 'include/vendors.php';
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
-const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
 
 /**
  * Config of hosts
@@ -150,21 +149,18 @@ task('magento:create:symlinks', function () {
     }
 });
 
+// Only setup:db:status decides whether the DB is upgraded, as in the upstream Deployer magento2 recipe.
+// module:config:status is deliberately NOT checked: the upgrade below runs setup:db-schema:upgrade and
+// setup:db-data:upgrade, which never rewrite app/etc/config.php (only setup:upgrade does), so a
+// config.php it reports as outdated could not be fixed here anyway. It also compares module order
+// strictly, so it flagged most of our sites on every deploy, and every one of those deploys went into
+// maintenance mode for an upgrade that changed nothing (TASK-37178618).
 set('database_upgrade_needed', function () {
     // detect if setup:upgrade is needed
     try {
         run('{{bin/php}} {{bin/magento}} setup:db:status');
     } catch (RunException $e) {
         if ($e->getExitCode() == DB_UPDATE_NEEDED_EXIT_CODE) {
-            return true;
-        }
-
-        throw $e;
-    }
-    try {
-        run('{{bin/php}} {{bin/magento}} module:config:status');
-    } catch (RunException $e) {
-        if ($e->getExitCode() == CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE) {
             return true;
         }
 
