@@ -165,6 +165,12 @@ set('database_upgrade_needed', function () {
         run('{{bin/php}} {{bin/magento}} module:config:status');
     } catch (RunException $e) {
         if ($e->getExitCode() == CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE) {
+            if (moduleConfigDiffersOnlyInOrder()) {
+                warning('app/etc/config.php lists the right modules in a different order to the one Magento ' .
+                    'computes. Skipping maintenance mode and the DB upgrade: they would not change the order. ' .
+                    'Run setup:upgrade locally and commit app/etc/config.php to clear this warning.');
+                return false;
+            }
             return true;
         }
 
@@ -173,6 +179,49 @@ set('database_upgrade_needed', function () {
 
     return false;
 });
+
+/**
+ * module:config:status compares config.php to Magento's computed module list with a strict `!==`, so
+ * a config.php with exactly the right modules in a different order counts as "outdated". The
+ * setup:db-*:upgrade commands never rewrite config.php, so on a site in that state every deploy went
+ * into maintenance mode for an upgrade that changed nothing -- most of our sites, as of Sept 2026.
+ *
+ * Builds the module list the same way the Installer does (ModuleList\Loader), without bootstrapping
+ * the application, so no DB or cache connection. Anything unexpected -- an error, an older Magento
+ * whose Loader signature differs -- returns false and the deploy upgrades exactly as before.
+ */
+function moduleConfigDiffersOnlyInOrder(): bool
+{
+    $script = <<<'PHP'
+require 'app/autoload.php';
+$parserFactory = new class extends \Magento\Framework\Xml\ParserFactory {
+    public function __construct() {}
+    public function create(): \Magento\Framework\Xml\Parser { return new \Magento\Framework\Xml\Parser(); }
+};
+$loader = new \Magento\Framework\Module\ModuleList\Loader(
+    new \Magento\Framework\Module\Declaration\Converter\Dom(),
+    new \Magento\Framework\Xml\Parser(),
+    new \Magento\Framework\Component\ComponentRegistrar(),
+    new \Magento\Framework\Filesystem\Driver\File(),
+    $parserFactory
+);
+$computed = array_keys($loader->load());
+$config = include 'app/etc/config.php';
+$current = array_keys($config['modules'] ?? []);
+$sameOrder = $computed === $current;
+sort($computed);
+sort($current);
+echo $sameOrder ? 'IDENTICAL' : ($computed === $current ? 'ORDER_ONLY' : 'DIFFERENT');
+PHP;
+
+    try {
+        $result = run('cd {{release_path}} && {{bin/php}} -r ' . escapeshellarg($script));
+    } catch (RunException $e) {
+        return false;
+    }
+
+    return trim($result) === 'ORDER_ONLY';
+}
 
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function () {
