@@ -37,18 +37,20 @@ production:
 
 **Note:** The `skip_lfs` option uses `set('env', ...)` to configure the `GIT_LFS_SKIP_SMUDGE` environment variable. If your project needs additional environment variables, add them inside the same closure in _deploy.php_ rather than calling `set('env', ...)` separately, which would overwrite the LFS setting.
 
-### Static content themes
+### Static content themes and locales
 
-By default static content is built for every theme Magento knows about (Magento/blank, Magento/luma, Hyva/default, ...) in every locale, which is most of the asset build time. To build only what the site serves, set in _hosts.yml_ (or the project's _deploy.php_):
+Static content uses the same settings as Deployer's own Magento recipe (`static_content_locales`, `magento_themes`, `static_deploy_options`, `split_static_deployment`, `static_content_locales_backend`, `magento_themes_backend`, `static_content_jobs`); see the comments in _deploy.php_ or [Deployer's magento2 recipe](https://github.com/deployphp/deployer/blob/master/recipe/magento2.php). `static_content_locales` defaults to the older `asset_locales` setting.
+
+By default every theme Magento knows about (Magento/blank, Magento/luma, Hyva/default, ...) is built, which is most of the asset build time. To build only what the site serves, in _hosts.yml_:
 
 ```yaml
 production:
-  asset_themes_frontend: [Aonach/hyva, Aonach/checkout]   # every theme assigned to a store view + the Hyvä checkout fallback
-  asset_themes_adminhtml: [Magento/backend]
-  asset_locales_adminhtml: en_US                           # optional; defaults to asset_locales
+  static_content_locales: en_IE                                  # the store's default locale
+  magento_themes: [Aonach/hyva, Aonach/checkout, Magento/backend] # store view theme(s), Hyvä checkout fallback, admin theme
+  static_deploy_options: --no-parent
 ```
 
-A live theme that is not listed serves 404s for its CSS/JS, so check the design configuration (and the admin users' interface locales) first. The store's default locale (`general/locale/code`) is always added to the admin locales, because the admin login page uses it before anyone is logged in.
+A live theme that is not listed serves 404s for its CSS/JS, so check the design configuration first. The admin needs every admin user's interface locale **and** the store's default locale (`general/locale/code`), which the admin login page uses before anyone is logged in. Simplest: build one locale, the store's default, and set every admin user's interface locale to it.
 
 ## Related links:
 
