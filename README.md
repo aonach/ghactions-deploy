@@ -37,6 +37,19 @@ production:
 
 **Note:** The `skip_lfs` option uses `set('env', ...)` to configure the `GIT_LFS_SKIP_SMUDGE` environment variable. If your project needs additional environment variables, add them inside the same closure in _deploy.php_ rather than calling `set('env', ...)` separately, which would overwrite the LFS setting.
 
+### Static content themes
+
+By default static content is built for every theme Magento knows about (Magento/blank, Magento/luma, Hyva/default, ...) in every locale, which is most of the asset build time. To build only what the site serves, set in _hosts.yml_ (or the project's _deploy.php_):
+
+```yaml
+production:
+  asset_themes_frontend: [Aonach/hyva, Aonach/checkout]   # every theme assigned to a store view + the Hyvä checkout fallback
+  asset_themes_adminhtml: [Magento/backend]
+  asset_locales_adminhtml: en_US                           # optional; defaults to asset_locales
+```
+
+A live theme that is not listed serves 404s for its CSS/JS, so check the design configuration (and the admin users' interface locales) first.
+
 ## Related links:
 
 https://deployer.org

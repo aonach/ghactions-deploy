@@ -34,6 +34,24 @@ set('repo_path', 'src');
 set('keep_releases', 3);
 set('asset_locales', 'en_US en_IE');
 
+// Which themes static content is built for. Left empty (the default), Magento builds every theme it
+// knows about -- Magento/blank, Magento/luma, Hyva/default, Hyva/reset, ... -- in every locale, one
+// after another, and most of those are never served. On a typical Hyvä site that is well over half
+// of the magento:deploy:assets time.
+//
+// Set these per site to build only what is live:
+//     set('asset_themes_frontend', ['Aonach/hyva', 'Aonach/checkout']);
+//     set('asset_themes_adminhtml', ['Magento/backend']);
+//     set('asset_locales_adminhtml', 'en_US');   // empty = same as asset_locales
+// or the same keys as lists in hosts.yml. A listed theme's parents are still read as fallback
+// sources; --no-parent only stops them being written out as themes of their own. So list every
+// theme assigned to a store view, the Hyvä checkout fallback theme, and the admin theme. A live
+// theme that is NOT listed serves 404s for its CSS/JS, so check design config before setting this.
+// Admin locales must cover every admin user's interface locale.
+set('asset_themes_frontend', []);
+set('asset_themes_adminhtml', []);
+set('asset_locales_adminhtml', '');
+
 // Deployer's own defaults are too tight for a Magento asset build. When they are exceeded the
 // failure is nasty and quiet: setup:static-content:deploy completes, Deployer then kills a
 // process group that has already exited, the failed `kill` exits 1, and the deploy dies BEFORE
@@ -130,16 +148,57 @@ task('npm run build-prod', function () {
 
 });
 
+/**
+ * Theme lists come from deploy.php as arrays or from hosts.yml as lists, but accept a
+ * space-separated string too.
+ */
+function assetThemes(string $key): array
+{
+    $themes = get($key);
+    if (is_string($themes)) {
+        $themes = preg_split('/\s+/', trim($themes), -1, PREG_SPLIT_NO_EMPTY);
+    }
+
+    return array_values(array_filter((array)$themes));
+}
+
+function staticContentDeployCommand(string $area, array $themes, string $locales): string
+{
+    $options = ['--force', '--area ' . $area];
+    if ($themes) {
+        $options[] = '--no-parent';
+        foreach ($themes as $theme) {
+            $options[] = '--theme ' . escapeshellarg($theme);
+        }
+    }
+
+    return '{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy ' .
+        implode(' ', $options) . ' ' . $locales;
+}
+
 desc('Magento2 deploy assets');
 task('magento:deploy:assets', function () {
     // Magento 2.1 has different arguments for setup:static-content:deploy, so
     // we need to do the condition to take this
-    $additionalOptions = version_compare(get('m2_version'), '2.2', '>=') ? '--force' : '--quiet';
+    if (version_compare(get('m2_version'), '2.2', '<')) {
+        run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy --quiet {{asset_locales}}');
+        return;
+    }
 
-    run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy ' .
-        $additionalOptions . ' ' .
-        get('asset_locales')
-    );
+    $frontendThemes = assetThemes('asset_themes_frontend');
+    $adminThemes = assetThemes('asset_themes_adminhtml');
+    $adminLocales = trim((string)get('asset_locales_adminhtml'));
+
+    if (!$frontendThemes && !$adminThemes && $adminLocales === '') {
+        // Nothing configured for this site: build everything, exactly as before.
+        run('{{bin/php}} {{release_path}}/bin/magento setup:static-content:deploy --force {{asset_locales}}');
+        return;
+    }
+
+    // One command per area, because the locales argument applies to every area in a command and the
+    // admin rarely needs all the storefront locales. Magento does not clean pub/static between runs.
+    run(staticContentDeployCommand('frontend', $frontendThemes, get('asset_locales')));
+    run(staticContentDeployCommand('adminhtml', $adminThemes, $adminLocales ?: get('asset_locales')));
 });
 
 desc('Magento2 create symlinks');
