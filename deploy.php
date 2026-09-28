@@ -16,7 +16,6 @@ require_once 'include/shared.php';
 require_once 'include/vendors.php';
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
-const CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE = 1;
 
 /**
  * Config of hosts
@@ -150,6 +149,12 @@ task('magento:create:symlinks', function () {
     }
 });
 
+// Only setup:db:status decides whether the DB is upgraded, as in the upstream Deployer magento2 recipe.
+// module:config:status is deliberately NOT checked: the upgrade below runs setup:db-schema:upgrade and
+// setup:db-data:upgrade, which never rewrite app/etc/config.php (only setup:upgrade does), so a
+// config.php it reports as outdated could not be fixed here anyway. It also compares module order
+// strictly, so it flagged most of our sites on every deploy, and every one of those deploys went into
+// maintenance mode for an upgrade that changed nothing (TASK-37178618).
 set('database_upgrade_needed', function () {
     // detect if setup:upgrade is needed
     try {
@@ -161,67 +166,9 @@ set('database_upgrade_needed', function () {
 
         throw $e;
     }
-    try {
-        run('{{bin/php}} {{bin/magento}} module:config:status');
-    } catch (RunException $e) {
-        if ($e->getExitCode() == CONFIG_PHP_UPDATE_NEEDED_EXIT_CODE) {
-            if (moduleConfigDiffersOnlyInOrder()) {
-                warning('app/etc/config.php lists the right modules in a different order to the one Magento ' .
-                    'computes. Skipping maintenance mode and the DB upgrade: they would not change the order. ' .
-                    'Run setup:upgrade locally and commit app/etc/config.php to clear this warning.');
-                return false;
-            }
-            return true;
-        }
-
-        throw $e;
-    }
 
     return false;
 });
-
-/**
- * module:config:status compares config.php to Magento's computed module list with a strict `!==`, so
- * a config.php with exactly the right modules in a different order counts as "outdated". The
- * setup:db-*:upgrade commands never rewrite config.php, so on a site in that state every deploy went
- * into maintenance mode for an upgrade that changed nothing -- most of our sites, as of Sept 2026.
- *
- * Builds the module list the same way the Installer does (ModuleList\Loader), without bootstrapping
- * the application, so no DB or cache connection. Anything unexpected -- an error, an older Magento
- * whose Loader signature differs -- returns false and the deploy upgrades exactly as before.
- */
-function moduleConfigDiffersOnlyInOrder(): bool
-{
-    $script = <<<'PHP'
-require 'app/autoload.php';
-$parserFactory = new class extends \Magento\Framework\Xml\ParserFactory {
-    public function __construct() {}
-    public function create(): \Magento\Framework\Xml\Parser { return new \Magento\Framework\Xml\Parser(); }
-};
-$loader = new \Magento\Framework\Module\ModuleList\Loader(
-    new \Magento\Framework\Module\Declaration\Converter\Dom(),
-    new \Magento\Framework\Xml\Parser(),
-    new \Magento\Framework\Component\ComponentRegistrar(),
-    new \Magento\Framework\Filesystem\Driver\File(),
-    $parserFactory
-);
-$computed = array_keys($loader->load());
-$config = include 'app/etc/config.php';
-$current = array_keys($config['modules'] ?? []);
-$sameOrder = $computed === $current;
-sort($computed);
-sort($current);
-echo $sameOrder ? 'IDENTICAL' : ($computed === $current ? 'ORDER_ONLY' : 'DIFFERENT');
-PHP;
-
-    try {
-        $result = run('cd {{release_path}} && {{bin/php}} -r ' . escapeshellarg($script));
-    } catch (RunException $e) {
-        return false;
-    }
-
-    return trim($result) === 'ORDER_ONLY';
-}
 
 desc('Magento2 upgrade database');
 task('magento:upgrade:db', function () {
