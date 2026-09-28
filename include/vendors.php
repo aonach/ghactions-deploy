@@ -9,17 +9,15 @@ set('composer_options', '--verbose --prefer-dist --no-progress --no-interaction 
 // Returns Composer binary path in found. Otherwise try to install latest
 // composer version to `.dep/composer.phar`. To use specific composer version
 // download desired phar and place it at `.dep/composer.phar`.
+// Checked in one remote call rather than one per candidate (each is a full SSH round trip).
 set('bin/composer', function () {
-    if (test('[ -f {{deploy_path}}/.dep/composer.phar ]')) {
-        return '{{bin/php}} {{deploy_path}}/.dep/composer.phar';
-    }
-
-    if (test('[ -f ~/.local/bin/composer-2.phar ]')) {
-        return '{{bin/php}} ~/.local/bin/composer-2.phar';
-    }
-
-    if (commandExist('composer')) {
-        return '{{bin/php}} ' . which('composer');
+    $composer = trim(run(
+        'if [ -f {{deploy_path}}/.dep/composer.phar ]; then echo {{deploy_path}}/.dep/composer.phar; ' .
+        'elif [ -f ~/.local/bin/composer-2.phar ]; then echo ~/.local/bin/composer-2.phar; ' .
+        'else command -v composer || true; fi'
+    ));
+    if ($composer !== '') {
+        return '{{bin/php}} ' . $composer;
     }
 
     warning("Composer binary wasn't found. Installing latest composer to \"{{deploy_path}}/.dep/composer.phar\".");
@@ -30,8 +28,6 @@ set('bin/composer', function () {
 
 desc('Installs vendors');
 task('deploy:vendors', function () {
-    if (!commandExist('unzip')) {
-        warning('To speed up composer installation setup "unzip" command with PHP zip extension.');
-    }
-    run('cd {{release_or_current_path}} && {{bin/composer}} {{composer_action}} {{composer_options}} 2>&1');
+    run('hash unzip 2>/dev/null || echo "WARNING: To speed up composer installation setup \"unzip\" command with PHP zip extension."; ' .
+        'cd {{release_or_current_path}} && {{bin/composer}} {{composer_action}} {{composer_options}} 2>&1');
 });
