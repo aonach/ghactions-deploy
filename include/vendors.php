@@ -14,7 +14,7 @@ set('bin/composer', function () {
     $composer = trim(run(
         'if [ -f {{deploy_path}}/.dep/composer.phar ]; then echo {{deploy_path}}/.dep/composer.phar; ' .
         'elif [ -f ~/.local/bin/composer-2.phar ]; then echo ~/.local/bin/composer-2.phar; ' .
-        'else command -v composer || true; fi'
+        'elif hash composer 2>/dev/null; then command -v composer; fi'
     ));
     if ($composer !== '') {
         return '{{bin/php}} ' . $composer;
