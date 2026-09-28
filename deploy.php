@@ -326,11 +326,13 @@ task('magento:cache:flush', function () {
 // upstream Deployer recipe, which does `after('deploy:symlink', 'magento:cache:flush')`.
 //
 // See TASK-37113007 and aonach/workflows/CACHE-FLUSH-ORDERING.md for the full write-up.
+//
+// deploy:shared is not listed again after deploy:vendors: Deployer 7's deploy:prepare already runs
+// it, and the second pass only re-created the same symlinks (~18s on a slow link).
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
     'deploy:vendors',
-    'deploy:shared',
     'magento:apply:patches',
     'magento:di:compile',
     'npm run build-prod',
