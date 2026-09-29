@@ -48,42 +48,64 @@ production:
 - a logged-in admin user uses their own *Interface Locale*;
 - the **admin login page** uses the store's default locale (`general/locale/code`), because nobody is logged in yet.
 
-Miss one and that page loads with no CSS/JS. Nothing errors and the deploy succeeds (sportresponse test lost its admin login page this way). The simple answer is **one locale per site**: the store's default locale, with every admin user set to it. In practice all our sites are English and the different locales are leftover defaults (`en_US` is Magento's default; `en_IE`/`en_GB` is where we are). A genuinely multi-language site lists its real locales instead.
+Miss one and that page loads with no CSS/JS. Nothing errors and the deploy succeeds (sportresponse test lost its admin login page this way).
+
+**Our rule: build the storefront in its store views' locales, and leave the admin as it is.** The admin gets the store's default locale plus every locale an admin user is on, which in practice is usually `en_US` + the store locale. No admin user has to change anything, and the admin behaves exactly as before, so there's nothing to retest. It's also what Magento itself does when it chooses the locales. One locale for everything would save another ~25-30s per deploy, but every admin user would need switching and logging in again. Admin users created later with Magento's `en_US` default (e.g. `bin/magento admin:user:create`) would get a broken admin, and third-party extensions that assume US date format in the admin could mis-read dates. The team decided against it (TASK-37178618).
 
 #### Enabling it on a site (sportresponse as the worked example)
 
-1. **Find out what the site serves.** Run read-only queries on the site's database (test first, then production), with the table prefix from `app/etc/env.php` if there is one:
-   ```sql
-   SELECT theme_id, area, theme_path FROM theme;
-   SELECT scope, scope_id, path, value FROM core_config_data
-    WHERE path IN ('design/theme/theme_id', 'general/locale/code', 'hyva_theme_fallback/general/theme_full_path')
-       OR path LIKE 'admin/system_admin_design/%';  -- a non-default admin theme, if any
-   SELECT interface_locale, is_active, COUNT(*) FROM admin_user GROUP BY 1, 2;
+1. **Find out what the site serves.** On the site's server (test first, then production), run this read-only query from `~/deploy/current`. If `app/etc/env.php` sets a table prefix, add it to the table names.
+   ```bash
+   n98-magerun2 db:query "
+   SELECT 'store theme' AS setting, CONCAT(c.scope, ':', c.scope_id) AS scope, t.theme_path AS value
+     FROM core_config_data c JOIN theme t ON t.theme_id = c.value WHERE c.path = 'design/theme/theme_id'
+   UNION ALL SELECT 'checkout fallback', CONCAT(scope, ':', scope_id), value
+     FROM core_config_data WHERE path = 'hyva_theme_fallback/general/theme_full_path'
+   UNION ALL SELECT 'admin theme', CONCAT(c.scope, ':', c.scope_id), COALESCE(t.theme_path, c.value)
+     FROM core_config_data c LEFT JOIN theme t ON t.theme_id = c.value WHERE c.path = 'admin/system_admin_design/active_theme'
+   UNION ALL SELECT 'store locale', CONCAT(scope, ':', scope_id), value
+     FROM core_config_data WHERE path = 'general/locale/code'
+   UNION ALL SELECT 'admin user locale', CONCAT(COUNT(*), ' users'), interface_locale
+     FROM admin_user GROUP BY interface_locale"
    ```
-   sportresponse: one store view on theme 7 (`Aonach/hyva`), default locale `en_IE`, Hyvä checkout fallback `frontend/Aonach/checkout`, all 8 admin users on `en_US`.
-
-2. **Pick the site's locale:** the store's default locale (`en_IE` for sportresponse). Keep the store's locale rather than switching the store to `en_US`: it sets date and number formats for customers. The English wording is the same either way.
-
-3. **Switch the admin users to that locale.** Do this *before* step 4, while the admin is still built in both locales, so nobody is ever left on a locale that isn't built:
-   ```sql
-   UPDATE admin_user SET interface_locale = 'en_IE' WHERE interface_locale <> 'en_IE';
+   sportresponse test gave:
    ```
-   In production mode Magento only offers built locales when creating an admin user, so new users can then only pick that locale.
+   setting            scope      value
+   store theme        default:0  Aonach/hyva
+   checkout fallback  default:0  frontend/Aonach/checkout
+   store locale       default:0  en_IE
+   admin user locale  8 users    en_US
+   ```
+   Reading it:
+   - `magento_themes`: every *store theme*, plus the *checkout fallback* without `frontend/`. Here that's `[Aonach/hyva, Aonach/checkout]`.
+   - `static_content_locales`: every *store locale*, `default:0` plus any `websites:` or `stores:` rows. Here that's `en_IE`.
+   - `static_content_locales_backend`: the *store locale* at `default:0` (the admin login page uses it) plus every *admin user locale*. Here that's `en_US en_IE`.
+   - `magento_themes_backend`: the *admin theme*; no row means `Magento/backend`.
+   - Rows at `websites:` or `stores:` scope are store views with their own theme or locale; include those values too.
 
-4. **Set the site's config** in _hosts.yml_ for that host:
+2. **Set the site's config** in _hosts.yml_, on every host:
    ```yaml
-   static_content_locales: en_IE                                   # the store's default locale
-   magento_themes: [Aonach/hyva, Aonach/checkout, Magento/backend]  # store view theme(s), Hyvä checkout fallback, admin theme
+   split_static_deployment: true                     # storefront and admin built separately
+   static_deploy_options: --no-parent
+   static_content_locales: en_IE                     # the store views' locale(s)
+   magento_themes: [Aonach/hyva, Aonach/checkout]    # store view theme(s) + Hyvä checkout fallback
+   static_content_locales_backend: en_US en_IE       # the store's default locale + every admin user's locale
+   magento_themes_backend: [Magento/backend]         # the admin theme
+   ```
+   If the storefront and admin locales are the same single locale (e.g. everything is `en_US`), the simpler form does the same in one build:
+   ```yaml
+   static_content_locales: en_US
+   magento_themes: [Aonach/hyva, Soundstore/soundstore, Magento/backend]
    static_deploy_options: --no-parent
    ```
-   List every theme assigned to a store view, the Hyvä checkout fallback theme, and the admin theme (`Magento/backend`, unless the site uses another admin theme). `--no-parent` stops parent themes being built as themes of their own. They are still used as fallback sources.
+   `--no-parent` stops parent themes (Magento/blank, Magento/luma, Hyva/default, ...) being built as themes of their own. They are still used as fallback sources. A live theme that isn't listed serves 404s for its CSS/JS.
 
-5. **Deploy to test** (PR into `test`) and check:
-   - `pub/static` contains only the listed themes and locale;
+3. **Deploy to test** (PR into `test`) and check:
+   - `pub/static` contains only the listed themes and locales;
    - the storefront, a checkout page (the fallback theme), the **admin login page** and a logged-in admin page all load their CSS/JS;
-   - the deploy log shows a single `setup:static-content:deploy` with the themes and locale above.
+   - the deploy log shows the `setup:static-content:deploy` command(s) with the themes and locales above.
 
-6. **Production:** repeat steps 1-3 on the production database, add the same settings to the production host, and ship it with the usual `test` → `main` PR.
+4. **Production:** run step 1 on the production database, give the production host the same settings, and ship it with the usual `test` → `main` PR. No admin user changes are needed.
 
 ## Related links:
 

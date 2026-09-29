@@ -43,14 +43,16 @@ set('asset_locales', 'en_US en_IE');
 //
 // With nothing set, every theme Magento knows about (Magento/blank, Magento/luma, Hyva/default, ...)
 // is built in every locale, as before. To build only what a site serves, e.g. in hosts.yml:
-//     static_content_locales: en_IE
-//     magento_themes: [Aonach/hyva, Aonach/checkout, Magento/backend]
+//     split_static_deployment: true
 //     static_deploy_options: --no-parent
-// List every theme assigned to a store view, the Hyvä checkout fallback theme and the admin theme; a
-// live theme that is not listed serves 404s for its CSS/JS. The admin needs every admin user's
-// interface locale AND the store's default locale (general/locale/code), which the admin login page
-// uses before anyone is logged in. Simplest is one locale for everything: the store's default locale,
-// with every admin user set to it.
+//     static_content_locales: en_IE                  # the store views' locale(s)
+//     magento_themes: [Aonach/hyva, Aonach/checkout]  # store view theme(s) + Hyvä checkout fallback
+//     static_content_locales_backend: en_US en_IE    # store default locale + every admin user's locale
+//     magento_themes_backend: [Magento/backend]
+// A live theme that is not listed serves 404s for its CSS/JS. The admin must include the store's
+// default locale (general/locale/code), which the admin login page uses before anyone is logged in,
+// and every admin user's interface locale. We keep the admin as it is rather than moving admin users
+// to one locale; see the README, "Static content".
 
 // By default setup:static-content:deploy uses `en_US`.
 // To change that, simply put `set('static_content_locales', 'en_US de_DE');`
