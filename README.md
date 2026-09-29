@@ -52,15 +52,33 @@ Miss one and that page loads with no CSS/JS. Nothing errors and the deploy succe
 
 #### Enabling it on a site (sportresponse as the worked example)
 
-1. **Find out what the site serves.** Run read-only queries on the site's database (test first, then production), with the table prefix from `app/etc/env.php` if there is one:
-   ```sql
-   SELECT theme_id, area, theme_path FROM theme;
-   SELECT scope, scope_id, path, value FROM core_config_data
-    WHERE path IN ('design/theme/theme_id', 'general/locale/code', 'hyva_theme_fallback/general/theme_full_path')
-       OR path LIKE 'admin/system_admin_design/%';  -- a non-default admin theme, if any
-   SELECT interface_locale, is_active, COUNT(*) FROM admin_user GROUP BY 1, 2;
+1. **Find out what the site serves.** On the site's server (test first, then production), run this read-only query from `~/deploy/current`. If `app/etc/env.php` sets a table prefix, add it to the table names.
+   ```bash
+   n98-magerun2 db:query "
+   SELECT 'store theme' AS setting, CONCAT(c.scope, ':', c.scope_id) AS scope, t.theme_path AS value
+     FROM core_config_data c JOIN theme t ON t.theme_id = c.value WHERE c.path = 'design/theme/theme_id'
+   UNION ALL SELECT 'checkout fallback', CONCAT(scope, ':', scope_id), value
+     FROM core_config_data WHERE path = 'hyva_theme_fallback/general/theme_full_path'
+   UNION ALL SELECT 'admin theme', CONCAT(c.scope, ':', c.scope_id), COALESCE(t.theme_path, c.value)
+     FROM core_config_data c LEFT JOIN theme t ON t.theme_id = c.value WHERE c.path = 'admin/system_admin_design/active_theme'
+   UNION ALL SELECT 'store locale', CONCAT(scope, ':', scope_id), value
+     FROM core_config_data WHERE path = 'general/locale/code'
+   UNION ALL SELECT 'admin user locale', CONCAT(COUNT(*), ' users'), interface_locale
+     FROM admin_user GROUP BY interface_locale"
    ```
-   sportresponse: one store view on theme 7 (`Aonach/hyva`), default locale `en_IE`, Hyvä checkout fallback `frontend/Aonach/checkout`, all 8 admin users on `en_US`.
+   sportresponse test gave:
+   ```
+   setting            scope      value
+   store theme        default:0  Aonach/hyva
+   checkout fallback  default:0  frontend/Aonach/checkout
+   store locale       default:0  en_IE
+   admin user locale  8 users    en_US
+   ```
+   Reading it:
+   - `magento_themes`: every *store theme*, plus the *checkout fallback* without `frontend/`, plus the *admin theme* (no row means `Magento/backend`). Here that's `[Aonach/hyva, Aonach/checkout, Magento/backend]`.
+   - `static_content_locales`: the *store locale* at `default:0`.
+   - Rows at `websites:` or `stores:` scope are store views with their own theme or locale; include those values too.
+   - Any *admin user locale* other than the store locale needs step 3.
 
 2. **Pick the site's locale:** the store's default locale (`en_IE` for sportresponse). Keep the store's locale rather than switching the store to `en_US`: it sets date and number formats for customers. The English wording is the same either way.
 
