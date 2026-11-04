@@ -85,6 +85,40 @@ Miss one and that page loads with no CSS/JS. Nothing errors and the deploy succe
 
 6. **Production:** repeat steps 1-3 on the production database, add the same settings to the production host, and ship it with the usual `test` → `main` PR.
 
+### Pausing cron during a deploy
+
+**Why.** On small Hypernode boxes, MySQL, nginx, PHP-FPM, cron and the deploy's own SSH session all share one memory limit, the `user.slice` cgroup (2.27 GiB on Organico test, Nov 2026, against 3.8 GB of RAM). Every minute Magento's `cron:run` starts one PHP process per cron group, plus queue consumers: ~700-850 MB together. With MySQL already at ~800 MB, `setup:di:compile` doesn't fit alongside it. The kernel kills the compile and the deploy fails with just `exit code -1 (Unknown error)` (TASK-37387450). To confirm on a box: `journalctl -k | grep -i "out of memory"`.
+
+**How.** With `pause_cron_during_deploy: true`, the deploy:
+1. touches `~/deploy/.dep/cron.paused` straight after `deploy:prepare`;
+2. before `di:compile`, waits (up to `cron_pause_max_wait`, 300s) for Magento cron and queue consumer processes that were already running. It never kills them; if they're still running after the wait, it logs them and carries on;
+3. removes the flag once the new release is live, or in `deploy:failed` if the deploy fails.
+
+**Only the Magento `cron:run` line is paused.** Other cron jobs (WordPress cron, logrotate, ecomscan, certificate renewal) keep running. Missed Magento jobs run on the next tick after the deploy, so things like async order emails are a few minutes late.
+
+#### Enabling it on a host
+
+1. **Add the guard to the server's crontab, once.** The flag does nothing on its own: the Magento `cron:run` line has to check for it. Run `crontab -e` as the site user and insert this straight before the `flock` (or the `php`, if there is no `flock`) on the Magento line, inside the `#~ MAGENTO START` / `#~ MAGENTO END` block:
+   ```
+   [ -n "$(find ~/deploy/.dep/cron.paused -mmin -60 2>/dev/null)" ] ||
+   ```
+   For example, on Organico test:
+   ```
+   * * * * * sleep 9; [ -n "$(find ~/deploy/.dep/cron.paused -mmin -60 2>/dev/null)" ] || flock -o -n ~/.fa7c47a7.lock -c '/usr/bin/php8.2 /data/web/deploy/current/bin/magento cron:run 2>&1 | grep -v "Ran jobs by schedule" >> /data/web/deploy/current/var/log/magento.cron.log'
+   ```
+   The guard ignores a flag older than 60 minutes, so a deploy that never reaches `deploy:failed` (e.g. a cancelled GitHub run) can't leave cron off for longer than that. Use the host's own `deploy_path` if it isn't `~/deploy`.
+
+2. **Set it in _hosts.yml_** for that host:
+   ```yaml
+   pause_cron_during_deploy: true
+   ```
+
+3. **Deploy** and check the log: `magento:cron:pause` says `Magento cron paused` with no warning, `magento:cron:wait` says how long it waited, and `var/log/cron.log` has no new `is run` lines between the end of the wait and `magento:cron:resume`.
+
+**Keep the guard.** `bin/magento cron:install --force` rewrites the Magento block and drops it. The deploy then logs `WARNING: the crontab has no guard ... cron is NOT actually paused` and carries on, so add it back.
+
+**To turn it off:** remove `pause_cron_during_deploy` from the host. The guard can stay in the crontab: the next deploy removes any leftover flag, so it never matches.
+
 ## Related links:
 
 https://deployer.org

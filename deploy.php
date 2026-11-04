@@ -17,6 +17,7 @@ require_once 'include/update_code.php';
 require_once 'include/shared.php';
 require_once 'include/vendors.php';
 require_once 'include/cleanup.php';
+require_once 'include/cron.php';
 
 const DB_UPDATE_NEEDED_EXIT_CODE = 2;
 
@@ -362,12 +363,19 @@ task('magento:cache:flush', function () {
 // settings such as basic auth), so we need the second pass. A site can also stop the installer
 // touching a file at all, e.g. a customised pub/.htaccess committed to the repo, by listing it in its
 // root composer.json: "extra": {"magento-deploy-ignore": {"magento/magento2-base": ["/pub/.htaccess"]}}.
+//
+// The magento:cron:* tasks do nothing unless the host sets pause_cron_during_deploy (see
+// include/cron.php). The pause comes straight after deploy:prepare, which creates .dep and takes the
+// deploy lock, and the wait comes just before di:compile, so cron that was already running finishes
+// while composer installs. Cron resumes once the new release is live and its cache flushed.
 desc('Deploy your project');
 task('deploy', [
     'deploy:prepare',
+    'magento:cron:pause',
     'deploy:vendors',
     'deploy:shared',
     'magento:apply:patches',
+    'magento:cron:wait',
     'magento:di:compile',
     'npm run build-prod',
     'magento:deploy:assets',
@@ -376,8 +384,10 @@ task('deploy', [
     'deploy:symlink',
     'magento:cache:flush',
     'php:opcache:flush',
+    'magento:cron:resume',
     'deploy:unlock',
     'deploy:cleanup',
     'deploy:success'
 ]);
 after('deploy:failed', 'deploy:unlock');
+after('deploy:failed', 'magento:cron:resume');
